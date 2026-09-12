@@ -29,7 +29,7 @@ function goalOverlap(goal: string, text: string): number {
  * navigation alone; the agent has to have interacted with page content
  * (typed, clicked, submitted, …) first.
  */
-const PLACEMENT_ACTIONS: ReadonlySet<string> = new Set([
+export const PLACEMENT_ACTIONS: ReadonlySet<string> = new Set([
   "navigate",
   "new_tab",
   "switch_tab",

@@ -89,6 +89,12 @@ export function useAgentState(bridge?: Events) {
       bus.on("STATUS_CHANGED", ({ status }) => {
         const ui = RUNTIME_TO_UI_STATUS[status];
         setState((prev) => {
+          // Post-completion UI states belong to the verification flow:
+          // a trailing COMPLETED must not clobber AWAITING_VERIFY (and its
+          // execution result) back into a bare status line.
+          if (prev.status === "AWAITING_VERIFY" || prev.status === "VERIFIED" || prev.status === "VERIFY_FAILED") {
+            return prev;
+          }
           return {
             ...prev,
             status: ui,
@@ -99,14 +105,32 @@ export function useAgentState(bridge?: Events) {
     );
 
     offs.push(
-      bus.on("ACTION_STARTED", ({ action }) => {
+      bus.on("TASK_STARTED", ({ taskId, goal }) => {
+        setState(
+          appendLog({
+            level: "info",
+            text: `task started [${taskId}] — "${goal.slice(0, 120)}"`,
+            event: { kind: "task-start", taskId },
+          }),
+        );
+      }),
+    );
+
+    offs.push(
+      bus.on("ACTION_STARTED", ({ action, actionId, stepId, taskId }) => {
         setState((prev) => ({
           ...prev,
           status: "ACTING",
           actionText: `Executing ${describeActionSpec(action)}…`,
         }));
         pushState("ACTING", `Executing ${describeActionSpec(action)}…`);
-        setState(appendLog({ level: "action", text: `action → ${describeActionSpec(action)}` }));
+        setState(
+          appendLog({
+            level: "action",
+            text: `action → ${describeActionSpec(action)} [${actionId}${stepId ? `/${stepId}` : ""}]`,
+            event: { kind: "action-start", spec: describeActionSpec(action), taskId, actionId, stepId },
+          }),
+        );
       }),
     );
 
@@ -133,26 +157,69 @@ export function useAgentState(bridge?: Events) {
     );
 
     offs.push(
-      bus.on("VERIFICATION_SUCCEEDED", ({ action }) => {
+      bus.on("VERIFICATION_SUCCEEDED", ({ action, actionId, taskId }) => {
         setState((prev) => ({
           ...prev,
           status: "THINKING",
           actionText: `Done: ${describeActionSpec(action)}`,
         }));
         pushState("THINKING", `Done: ${describeActionSpec(action)}`);
-        setState(appendLog({ level: "success", text: `verified ✓ ${describeActionSpec(action)}` }));
+        setState(
+          appendLog({
+            level: "success",
+            text: `verified ✓ ${describeActionSpec(action)} [${actionId}]`,
+            event: { kind: "verify-ok", spec: describeActionSpec(action), taskId, actionId },
+          }),
+        );
       }),
     );
 
     offs.push(
-      bus.on("ACTION_FAILED", ({ action, error, details }) => {
-        setState(appendLog({ level: "error", text: `failed ✗ ${describeActionSpec(action)} (${error}${details ? ` — ${details}` : ""})` }));
+      bus.on("VERIFICATION_FAILED", ({ action, evidence, actionId, taskId }) => {
+        setState(
+          appendLog({
+            level: "error",
+            text: `verification ✗ ${describeActionSpec(action)} [${actionId}]: ${evidence.join("; ").slice(0, 160)}`,
+            event: {
+              kind: "verify-fail",
+              spec: describeActionSpec(action),
+              taskId,
+              actionId,
+              evidence,
+            },
+          }),
+        );
       }),
     );
 
     offs.push(
-      bus.on("RECOVERY_ATTEMPT", ({ attempt, strategy, reason }) => {
-        setState(appendLog({ level: "info", text: `recovery #${attempt} (${strategy}): ${reason}` }));
+      bus.on("ACTION_FAILED", ({ action, error, details, actionId, taskId }) => {
+        setState(
+          appendLog({
+            level: "error",
+            text: `failed ✗ ${describeActionSpec(action)} [${actionId}] (${error}${details ? ` — ${details}` : ""})`,
+            event: {
+              kind: "action-fail",
+              spec: describeActionSpec(action),
+              taskId,
+              actionId,
+              error,
+              details,
+            },
+          }),
+        );
+      }),
+    );
+
+    offs.push(
+      bus.on("RECOVERY_ATTEMPT", ({ attempt, strategy, reason, action }) => {
+        setState(
+          appendLog({
+            level: "info",
+            text: `recovery #${attempt} (${strategy}${action ? ` ${action}` : ""}): ${reason}`,
+            event: { kind: "recovery", spec: action, attempt, strategy },
+          }),
+        );
       }),
     );
 
@@ -246,20 +313,60 @@ export function useAgentState(bridge?: Events) {
 
     offs.push(
       bus.on("TASK_COMPLETED", ({ result }) => {
-        controllerActive.current = false;
+        // EXECUTION-complete, not objective-complete: every planned browser
+        // action ran with successful results, but the OBJECTIVE is unverified
+        // until the user inspects the real page. The timeline is owned by
+        // the controller — never bulk-marked done here.
         pendingActionId.current = undefined;
         setState((prev) => ({
           ...prev,
-          status: "SUCCESS",
-          actionText: result ?? "Task complete.",
+          status: "AWAITING_VERIFY",
+          actionText: result ?? "Execution finished.",
           risk: null,
-          steps: prev.steps.map((s) =>
-            s.status === "active" || s.status === "pending" ? { ...s, status: "done" as const } : s,
-          ),
         }));
-        pushState("SUCCESS", result ?? "Task complete.");
+        pushState("AWAITING_VERIFY", result ?? "Execution finished.");
         bridge?.beam(true);
-        setState(appendLog({ level: "success", text: `task complete — ${result ?? ""}` }));
+        setState(
+          appendLog({
+            level: "success",
+            text: `execution complete — awaiting your verification: ${result ?? ""}`,
+            event: { kind: "task-done" },
+          }),
+        );
+      }),
+    );
+
+    offs.push(
+      bus.on("TASK_VERIFIED", ({ ok, note }) => {
+        controllerActive.current = false;
+        if (ok) {
+          setState((prev) => ({
+            ...prev,
+            status: "VERIFIED",
+            actionText: "Objective verified — task done.",
+            risk: null,
+          }));
+          pushState("VERIFIED", "Objective verified — task done.");
+          setState(
+            appendLog({ level: "success", text: "objective verified by user — VERIFIED_SUCCESS", event: { kind: "verified", ok: true } }),
+          );
+        } else {
+          const detail = note ?? "The executed actions did not accomplish the objective.";
+          setState((prev) => ({
+            ...prev,
+            status: "VERIFY_FAILED",
+            actionText: detail,
+            risk: null,
+          }));
+          pushState("VERIFY_FAILED", detail);
+          setState(
+            appendLog({
+              level: "error",
+              text: `objective rejected by user — VERIFIED_FAILED: ${detail}`,
+              event: { kind: "verified", ok: false, details: detail },
+            }),
+          );
+        }
       }),
     );
 
@@ -274,6 +381,35 @@ export function useAgentState(bridge?: Events) {
         }));
         pushState("ERROR", reason);
         setState(appendLog({ level: "error", text: `task failed — ${reason}` }));
+      }),
+    );
+
+    offs.push(
+      bus.on("TASK_PAUSED", ({ reason, step, technical }) => {
+        // Ordinary execution failures park here — PAUSED in the task UI
+        // with the human reason up front and diagnostics in the drawer.
+        // The controller loop stays alive (parked, no timers) so Resume
+        // continues from the failed step; Stop still terminates it.
+        pendingActionId.current = undefined;
+        setState((prev) => ({
+          ...prev,
+          status: "PAUSED",
+          actionText: reason,
+        }));
+        pushState("PAUSED", reason);
+        setState(
+          appendLog({
+            level: "risk",
+            text: `task paused — ${reason}${step ? ` (step: ${step})` : ""}${technical ? ` — ${technical}` : ""}`,
+            event: { kind: "paused", details: technical },
+          }),
+        );
+      }),
+    );
+
+    offs.push(
+      bus.on("TASK_RESUMED", () => {
+        setState(appendLog({ level: "info", text: "task resumed — re-observing the page…" }));
       }),
     );
 
@@ -495,7 +631,11 @@ export function useAgentState(bridge?: Events) {
       controller.pause();
     }
     clearScheduled();
-    setState((prev) => ({ ...prev, status: "PAUSED", actionText: "Agent paused — press resume to continue." }));
+    setState((prev) =>
+      prev.status === "AWAITING_VERIFY" || prev.status === "VERIFIED" || prev.status === "VERIFY_FAILED"
+        ? prev
+        : { ...prev, status: "PAUSED", actionText: "Agent paused — press resume to continue." },
+    );
     pushState("PAUSED", "Agent paused — press resume to continue.");
   }, [clearScheduled, pushState]);
 
@@ -530,12 +670,25 @@ export function useAgentState(bridge?: Events) {
     setState((prev) => ({ ...prev, log: [] }));
   }, []);
 
+  /**
+   * Manual objective verification (Phase 17): the user inspected the real
+   * page after execution-complete and judges the OBJECTIVE. Forwards to
+   * the controller, which accepts it only in the awaiting state.
+   */
+  const verifyObjective = useCallback(
+    (ok: boolean, note?: string) => {
+      controller.submitVerification(ok, note);
+    },
+    [],
+  );
+
   return {
     state,
     startTask,
     stop,
     pause,
     resume,
+    verifyObjective,
     setStatus,
     clearLog,
   };

@@ -100,7 +100,9 @@ export function verifyTarget(
   if (!target || (!target.elementId && !target.role && !target.name && !target.selector)) {
     // Viewport/keyboard-level actions the validator permits without an
     // element reference (scroll, press_key, wait, …) always address the
-    // live viewport — verifiable by construction, never "unknown".
+    // live viewport — verifiable by construction, never "unknown". A
+    // targetless SEARCH is resolved live-DOM-side by the executor, which
+    // fails honestly when no search field exists.
     return { status: "verified", confidence: 0.85, matches: 0, method: "none", reason: "viewport-level action, no element target" };
   }
 

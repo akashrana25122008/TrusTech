@@ -19,19 +19,39 @@ export interface PlannerAction {
   plan?: PlannerPlan;
 }
 
-/** Best matching element for a given role/name/text signal from the snapshot. */
-function bestMatch(
-  snapshot: ObservationSnapshot,
-  role?: string,
-  text?: string,
-): string | undefined {
-  let bestScore = -1;
+/**
+ * Search-field resolution for query entry. Generic signals only (roles +
+ * lexical name cues, never site selectors): a searchbox role wins
+ * outright; other text-entry roles (textbox, combobox — the roles real
+ * search fields actually carry) must also carry a search-ish name, since
+ * a bare textbox might be any form control. Returns undefined when
+ * nothing genuinely matches — callers fall back to targetless SEARCH
+ * (the executor self-resolves) instead of acting on an arbitrary
+ * element, which is what mistargeted live typing on real pages.
+ */
+function bestSearchInput(snapshot: ObservationSnapshot): string | undefined {
+  let bestScore = 0;
   let bestId: string | undefined;
   for (const el of snapshot.elements) {
-    if (!el.visible) continue;
+    if (!el.visible || !el.enabled) continue;
+    const name = el.name ?? "";
     let score = 0;
-    if (role && el.role === role) score += 2;
-    if (text && (el.name.toLowerCase().includes(text.toLowerCase()) || (el.text ?? "").toLowerCase().includes(text.toLowerCase()))) score += 1;
+    if (el.role === "searchbox") {
+      score += 4;
+    } else if (el.role === "textbox" || el.role === "combobox") {
+      score += 2;
+    } else {
+      continue;
+    }
+    if (/\bsearch\b/i.test(name)) {
+      score += 3;
+    } else if (/query|find|lookup/i.test(name)) {
+      score += 1;
+    } else if (el.role !== "searchbox") {
+      // A bare text field with no search cue is not provably the search
+      // input — skip it rather than typing a query into a random control.
+      continue;
+    }
     if (score > bestScore) {
       bestScore = score;
       bestId = el.id;
@@ -70,11 +90,43 @@ function planStep(
     };
   }
 
-  if (/submit|press enter/.test(stepLower)) {
+  // Search submission is the SEARCH composite — enter (if needed) +
+  // submit (Enter, then search-button fallback) + verified results.
+  // A bare press_key Enter can no longer represent a search: typing the
+  // query is the input stage, not the completed operation.
+  // An unrendered page (mid-load observation: no text, no elements)
+  // cannot be planned against — settle briefly and re-observe next
+  // iteration instead of emitting an empty fallback finish. Destination
+  // navigation still proceeds (it is what renders the page).
+  if (
+    !snapshot.visibleText.trim() &&
+    snapshot.elements.length === 0 &&
+    snapshot.pageType !== "unsupported" &&
+    !isDestinationStep
+  ) {
     return {
       action: {
-        action: "press_key",
-        key: "Enter",
+        action: "wait",
+        ms: 2500,
+        confidence: 0.6,
+        expectedOutcome: { type: "noop" },
+      },
+      justification: "page not yet rendered — settle before planning",
+    };
+  }
+
+  if (/submit|press enter/.test(stepLower)) {
+    // A targetless SEARCH lets the executor resolve the field itself.
+    const searchId = bestSearchInput(snapshot);
+    const query =
+      goal.entities.find((e) => e.label === "query")?.value ??
+      goal.entities.find((e) => e.label !== "site" && e.label !== "platform")?.value ??
+      goal.goal;
+    return {
+      action: {
+        action: "search",
+        ...(searchId ? { target: { elementId: searchId } } : {}),
+        text: query,
         confidence: 0.85,
         expectedOutcome: { type: "content_change" },
       },
@@ -83,7 +135,7 @@ function planStep(
   }
 
   if (/enter the query|enter.*search|type.*query/.test(stepLower)) {
-    const inputId = bestMatch(snapshot, "textbox") ?? bestMatch(snapshot, "searchbox");
+    const inputId = bestSearchInput(snapshot);
     if (inputId) {
       // Prefer an extracted search topic ("Python compiler") over a bare
       // platform/site name — the platform is WHERE we search, not WHAT.
@@ -114,20 +166,50 @@ function planStep(
         justification: `already on a video page: ${snapshot.url}`,
       };
     }
-    const link = snapshot.elements.find(
-      (e) => e.visible && (e.role === "link" || e.tag === "a"),
+    // Relevance first: the link whose name overlaps the task query most is
+    // the relevant result. Blindly taking the first link clicks site chrome
+    // (verified live: the header logo link won over video results because
+    // headers precede results in DOM order). An empty-named link is never
+    // a relevant result — mid-render pages stamp names late, and clicking
+    // chrome navigates AWAY from the results.
+    const queryText = goal.entities.find((e) => e.label === "query")?.value ?? goal.goal;
+    const queryTokens = queryText
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((t) => t.length > 2);
+    const links = snapshot.elements.filter((e) => e.visible && (e.role === "link" || e.tag === "a"));
+    const overlap = (name: string): number => {
+      const lower = name.toLowerCase();
+      return queryTokens.filter((t) => lower.includes(t)).length;
+    };
+    const named = links.filter((e) => (e.name ?? "").trim().length > 0);
+    const ranked = [...named].sort(
+      (a, b) => overlap(b.name) - overlap(a.name) || b.name.length - a.name.length,
     );
-    if (link) {
+    const link = ranked[0];
+    const best = link ? overlap(link.name) : 0;
+    if (!link || best === 0) {
+      // No readable result yet — the page may still be rendering (verified
+      // live: result links stamp names seconds after navigation while the
+      // chrome links are already indexed), or the search genuinely returned
+      // nothing useful. Settle one beat and re-observe rather than clicking
+      // site chrome or ending the task on a half-painted page. Verification
+      // still judges whatever the NEXT step does; steps are finite so this
+      // always terminates.
       return {
-        action: {
-          action: "click",
-          target: { elementId: link.id },
-          confidence: 0.85,
-          expectedOutcome: { type: "url_change" },
-        },
-        justification: step,
+        action: { action: "wait", ms: 2500, confidence: 0.6, expectedOutcome: { type: "noop" } },
+        justification: `${step} — no readable result yet, settling`,
       };
     }
+    return {
+      action: {
+        action: "click",
+        target: { elementId: link.id },
+        confidence: 0.85,
+        expectedOutcome: { type: "url_change" },
+      },
+      justification: step,
+    };
   }
 
   if (/choose|select|pick/.test(stepLower)) {

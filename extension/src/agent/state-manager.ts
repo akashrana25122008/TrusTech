@@ -31,7 +31,11 @@ export const RUNTIME_TO_UI_STATUS: Record<AgentRuntimeStatus, AgentStateKey> = {
   VERIFYING: "THINKING",
   ASK_USER: "WAITING",
   RECOVERY: "THINKING",
-  COMPLETED: "SUCCESS",
+  // Runtime COMPLETED means execution-complete: every planned browser
+  // action ran. The OBJECTIVE is still unverified, so the UI shows the
+  // awaiting-verification state — never an auto SUCCESS. (The legacy
+  // simulator path sets UI SUCCESS directly and is unaffected.)
+  COMPLETED: "AWAITING_VERIFY",
   FAILED: "ERROR",
   PAUSED: "PAUSED",
   WAITING_FOR_USER: "WAITING",

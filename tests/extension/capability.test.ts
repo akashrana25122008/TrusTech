@@ -52,7 +52,7 @@ describe("page capability model", () => {
   });
 
   it("webpage actions require page-level controllability", () => {
-    for (const name of ["click", "double_click", "type", "clear", "select", "check", "uncheck", "radio", "scroll", "hover", "focus", "press_key", "wait", "extract", "submit"] as const) {
+    for (const name of ["click", "double_click", "type", "search", "clear", "select", "check", "uncheck", "radio", "scroll", "hover", "focus", "press_key", "wait", "extract", "submit"] as const) {
       expect(actionCapabilityLevel(name)).toBe("page");
     }
   });

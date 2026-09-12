@@ -220,6 +220,8 @@ export function actionOpOf(action: AgentAction): TaskOperation {
     case "type":
       if ((action.target?.role === "searchbox") || /\bsearch\b/i.test(action.target?.name ?? "")) return "SEARCH";
       return "INPUT";
+    case "search":
+      return "SEARCH";
     case "select":
     case "check":
     case "uncheck":

@@ -11,7 +11,20 @@ import type { PlanMeta, TaskData, TaskStep } from "./types";
 
 export interface AgentEventMap {
   TASK_STARTED: { taskId: string; goal: string };
-  TASK_PAUSED: Record<string, never>;
+  /**
+   * Manual verification verdict (Phase 17: final objective verification is
+   * human). Emitted when the user confirms or rejects the executed result.
+   * The task already reached execution-complete; this decides only whether
+   * the OBJECTIVE was met — never whether actions ran.
+   */
+  TASK_VERIFIED: { taskId: string; ok: boolean; note?: string };
+  /**
+   * The task stopped safely mid-run (action/verification/retry exhaustion,
+   * unsupported page, lost bridge). Human-readable reason for the task UI
+   * plus the failed step and technical diagnostics for the drawer.
+   * PAUSED is a task state, never a global application error.
+   */
+  TASK_PAUSED: { reason: string; step?: string; technical?: string };
   TASK_RESUMED: Record<string, never>;
   TASK_COMPLETED: { result?: string };
   TASK_FAILED: { reason: string };
@@ -25,11 +38,16 @@ export interface AgentEventMap {
    * controller is the single writer of the Action Timeline.
    */
   PLAN_CHANGED: { steps: TaskStep[]; meta: PlanMeta; data?: TaskData | null };
+  /**
+   * Traceability envelope: every action lifecycle event carries the task,
+   * canonical action instance, and plan-step ids so logs reconstruct
+   * Groq → engine → background → content → DOM → result per action.
+   */
   ACTION_PROPOSED: { action: AgentAction };
   ACTION_VALIDATED: { action: AgentAction; ok: boolean; reasons: string[] };
-  ACTION_STARTED: { action: AgentAction };
-  ACTION_SUCCEEDED: { action: AgentAction; hint?: ActionResult["hint"] };
-  ACTION_FAILED: { action: AgentAction; error: string; details?: string };
+  ACTION_STARTED: { action: AgentAction; taskId: string; actionId: string; stepId?: string };
+  ACTION_SUCCEEDED: { action: AgentAction; hint?: ActionResult["hint"]; taskId: string; actionId: string; stepId?: string };
+  ACTION_FAILED: { action: AgentAction; error: string; details?: string; taskId: string; actionId: string; stepId?: string };
   TAB_CREATED: { tabId: number; purpose?: string };
   TAB_SWITCHED: { tabId: number };
   TAB_CLOSED: { tabId: number };
@@ -37,9 +55,9 @@ export interface AgentEventMap {
   TAB_CHANGED: { tabId: number; previous: number };
   /** Working tab is browser-internal: page controls unavailable, browser control still live. */
   PAGE_NOT_CONTROLLABLE: { url: string; tabId: number };
-  VERIFICATION_STARTED: { action: AgentAction };
-  VERIFICATION_SUCCEEDED: { action: AgentAction; evidence: string[] };
-  VERIFICATION_FAILED: { action: AgentAction; evidence: string[] };
+  VERIFICATION_STARTED: { action: AgentAction; taskId: string; actionId: string; stepId?: string };
+  VERIFICATION_SUCCEEDED: { action: AgentAction; evidence: string[]; taskId: string; actionId: string; stepId?: string };
+  VERIFICATION_FAILED: { action: AgentAction; evidence: string[]; taskId: string; actionId: string; stepId?: string };
   USER_INPUT_REQUIRED: {
     reason: string;
     confirmable: boolean;
@@ -50,7 +68,7 @@ export interface AgentEventMap {
     riskLevel?: string;
     confidence?: number;
   };
-  RECOVERY_ATTEMPT: { attempt: number; reason: string; strategy: string };
+  RECOVERY_ATTEMPT: { attempt: number; reason: string; strategy: string; action?: string };
   PRIVACY_SCAN: { verdict: PrivacyVerdict; redacted: number };
   /**
    * The reasoning provider failed and the loop continues on the local

@@ -1,1 +1,0 @@
-from .cors import apply  # noqa: F401

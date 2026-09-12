@@ -26,7 +26,7 @@ import { verifyAction } from "./verifier";
 import { verifyTarget } from "./target-verifier";
 import { evaluateActionSafety } from "./safety-policy";
 import { RecoveryManager } from "./recovery-manager";
-import { checkCompletion } from "./completion-detector";
+import { checkCompletion, PLACEMENT_ACTIONS } from "./completion-detector";
 import { buildTaskIntent, type TaskIntent } from "./task-intent";
 import { extractSemanticFacts } from "./visual-memory";
 import type { VisualMemoryStore } from "./memory-store";
@@ -92,6 +92,13 @@ export class AgentController {
   private taskId = "";
   /** Monotonic action sequence (per run) for canonical action ids. */
   private actionSeq = 0;
+  /**
+   * Manual-verification state (Phase 17). Execution-complete and objective
+   * verification are separate: the loop ends at TASK_COMPLETED with
+   * "pending"; only an explicit submitVerification() call (the user
+   * inspecting the real page) resolves it to passed/failed.
+   */
+  private verification: "none" | "pending" | "passed" | "failed" = "none";
   /**
    * Approval awaiting user decision. Bound to the exact action instance
    * ({actionId, url, target}) — approvals for anything else are ignored,
@@ -169,6 +176,7 @@ export class AgentController {
   pause(): void {
     if (this.state.status === "IDLE" || this.state.status === "COMPLETED" || this.state.status === "FAILED") return;
     this.state.force("PAUSED");
+    this.bus.emit("TASK_PAUSED", { reason: "Paused by user." });
     this.bus.emit("STATUS_CHANGED", { status: "PAUSED" });
     this.paused = true;
   }
@@ -176,6 +184,7 @@ export class AgentController {
   resume(): void {
     if (this.state.status !== "PAUSED") return;
     this.paused = false;
+    this.bus.emit("TASK_RESUMED", {});
     this.pausedResolve?.();
     this.pausedResolve = null;
   }
@@ -230,6 +239,7 @@ export class AgentController {
     this.taskData = null;
     this.taskId = `task_${Date.now()}`;
     this.actionSeq = 0;
+    this.verification = "none";
     this.consumedApprovals.clear();
     this.allowedDomains.clear();
     this.originSeeded = false;
@@ -265,10 +275,12 @@ export class AgentController {
     const alive = await this.handshake(this.workingTabId);
     if (!this.alive(runId)) return;
     if (!alive.ok && alive.code !== "unsupported_page") {
-      this.bus.emit("TASK_FAILED", { reason: alive.message ?? alive.code ?? "Could not connect to the browser page." });
-      this.transition("FAILED");
-      this.emitStatus();
-      return;
+      // No live bridge: the task cannot execute, but this is recoverable
+      // (reload the tab, then resume) — pause, never a global error. On
+      // resume the loop below re-handshakes via observation; on stop the
+      // generation is orphaned and we exit.
+      await this.pauseTask(alive.message ?? alive.code ?? "Could not connect to the browser page.", runId);
+      if (!this.alive(runId)) return;
     }
 
     this.transition("OBSERVING");
@@ -303,13 +315,27 @@ export class AgentController {
           snapshot = observed.snapshot;
           freshness = observed.freshness;
         } catch (err) {
-          if (!isStaleContextError(err)) throw err;
-          // Observation arrived from the wrong tab — re-resolve and read once
-          // more before believing anything about the page.
-          await this.syncWorkingTab(defaultTabId);
-          const observed = await this.observe(this.workingTabId);
-          snapshot = observed.snapshot;
-          freshness = observed.freshness;
+          if (isStaleContextError(err)) {
+            // Observation arrived from the wrong tab — re-resolve and read once
+            // more before believing anything about the page.
+            await this.syncWorkingTab(defaultTabId);
+            const observed = await this.observe(this.workingTabId);
+            snapshot = observed.snapshot;
+            freshness = observed.freshness;
+          } else if (isBridgeColdError(err)) {
+            // SPA reloads/replacements legitimately drop the content bridge
+            // for a moment (verified live: a same-URL navigation parks the
+            // next read). Poll briefly before treating one cold read as a
+            // dead page — persistent coldness still surfaces honestly below.
+            const recovered = await this.waitForContentReady(this.workingTabId, this.workingTabUrl, 10000).catch(
+              () => null,
+            );
+            if (!recovered) throw err;
+            snapshot = recovered;
+            freshness = "live";
+          } else {
+            throw err;
+          }
         }
         this.pageControllable = true;
       } catch (err) {
@@ -399,13 +425,16 @@ export class AgentController {
             `environment trust ${trust.level} (${trust.score}/100): ${reasons.join(", ")}`,
           );
           if (rec.terminal) {
+            await this.pauseTask(rec.terminalReason ?? "environment trust", runId);
             if (!this.alive(runId)) return;
-            this.bus.emit("TASK_FAILED", { reason: rec.terminalReason ?? "environment trust" });
-            this.transition("FAILED");
-            this.emitStatus();
-            break;
+            stepIndex = Math.max(0, stepIndex - 1);
+            continue;
           }
-          stepIndex = Math.max(0, stepIndex - 1);
+          // No stepIndex change: the trust gate runs PRE-plan, so the
+          // counter still points at the next unplanned step. Decrementing
+          // here replays an already-verified step (verified live: a trust
+          // pause after a successful search re-emitted "submit the search"
+          // on the results page instead of advancing to video selection).
           continue;
         }
       }
@@ -431,13 +460,51 @@ export class AgentController {
             },
             "completion",
           );
-          if (this.driftFailed(`completion outside task boundary: ${boundary.reason}`, runId)) break;
-          stepIndex = Math.max(0, stepIndex - 1);
+          if (await this.driftFailed(`completion outside task boundary: ${boundary.reason}`, runId)) break;
+          // No stepIndex change: the trust gate runs PRE-plan, so the
+          // counter still points at the next unplanned step. Decrementing
+          // here replays an already-verified step (verified live: a trust
+          // pause after a successful search re-emitted "submit the search"
+          // on the results page instead of advancing to video selection).
           continue;
         }
       }
       if (completion.done) {
-        this.completeTask(completion.reason, runId, true);
+        // Substance rule: real interaction (beyond mere placement), or a
+        // planned terminal answer to verify. An empty finish after only
+        // placement navigation completes nothing describable — park
+        // (verified live: an empty mid-load observation produced
+        // finish("") after a bare navigate).
+        const acted = this.memory
+          .all()
+          .some((e) => e.kind === "executed" && !TERMINAL_ACTIONS.has(e.action.action));
+        const actedReal = this.memory
+          .all()
+          .some(
+            (e) =>
+              e.kind === "executed" &&
+              !TERMINAL_ACTIONS.has(e.action.action) &&
+              !PLACEMENT_ACTIONS.has(e.action.action) &&
+              !NON_EVIDENTIARY_ACTIONS.has(e.action.action),
+          );
+        const answer = this.terminalAnswer();
+        if (!actedReal && !answer) {
+          await this.pauseTask(
+            acted
+              ? "The planner finished without an answer to verify."
+              : "The planner finished without performing any browser action.",
+            runId,
+            "empty finish without observable accomplishment",
+          );
+          if (!this.alive(runId)) return;
+          // No stepIndex change: the trust gate runs PRE-plan, so the
+          // counter still points at the next unplanned step. Decrementing
+          // here replays an already-verified step (verified live: a trust
+          // pause after a successful search re-emitted "submit the search"
+          // on the results page instead of advancing to video selection).
+          continue;
+        }
+        this.completeTask(answer ?? completion.reason, runId, true);
         break;
       }
 
@@ -503,6 +570,24 @@ export class AgentController {
       // seed plans or actions into a terminal task.
       if (!this.alive(runId)) return;
       if (!plannerAction) {
+        // Exhausted plan: complete only when something actually executed
+        // (pure navigation tasks legitimately end here); zero executions
+        // means the plan evaporated without touching the browser.
+        const acted = this.memory.all().some((e) => e.kind === "executed");
+        if (!acted) {
+          await this.pauseTask(
+            "The task ended without performing any browser action.",
+            runId,
+            "planner exhausted with zero executed actions",
+          );
+          if (!this.alive(runId)) return;
+          // No stepIndex change: the trust gate runs PRE-plan, so the
+          // counter still points at the next unplanned step. Decrementing
+          // here replays an already-verified step (verified live: a trust
+          // pause after a successful search re-emitted "submit the search"
+          // on the results page instead of advancing to video selection).
+          continue;
+        }
         this.completeTask("no_planned_actions_remaining", runId, false);
         break;
       }
@@ -545,13 +630,16 @@ export class AgentController {
       stepIndex++;
 
       if (snapshot.pageType === "unsupported" && effectiveAction.action === "finish") {
+        // The task needs this exact internal page, which exposes no DOM
+        // controls. Honest and recoverable (navigate somewhere drivable,
+        // then resume) — pause, never a global error.
+        await this.pauseTask(
+          `This browser page (${snapshot.url || "internal page"}) does not expose webpage controls, and the task needs this exact page. Open or navigate to a normal website first.`,
+          runId,
+        );
         if (!this.alive(runId)) return;
-        this.bus.emit("TASK_FAILED", {
-          reason: `This browser page (${snapshot.url || "internal page"}) does not expose webpage controls, and the task needs this exact page. Open or navigate to a normal website first.`,
-        });
-        this.transition("FAILED");
-        this.emitStatus();
-        break;
+        stepIndex = Math.max(0, stepIndex - 1);
+        continue;
       }
 
       // Ground the target identity ONCE against this snapshot so the
@@ -612,15 +700,19 @@ export class AgentController {
             : null;
           if (!recheck || recheck.decision !== "CONTINUE") {
             this.emitDrift(recheck ?? preDrift, "pre");
-            if (this.driftFailed(preDrift.reasons.join("; "), runId)) break;
+            if (await this.driftFailed(preDrift.reasons.join("; "), runId)) break;
             stepIndex = Math.max(0, stepIndex - 1);
             continue;
           }
           if (fresh) snapshot = fresh;
         } else if (preDrift.decision === "PAUSE" || preDrift.decision === "REPLAN") {
           this.emitDrift(preDrift, "pre");
-          if (this.driftFailed(preDrift.reasons.join("; "), runId)) break;
-          stepIndex = Math.max(0, stepIndex - 1);
+          if (await this.driftFailed(preDrift.reasons.join("; "), runId)) break;
+          // No stepIndex change: the trust gate runs PRE-plan, so the
+          // counter still points at the next unplanned step. Decrementing
+          // here replays an already-verified step (verified live: a trust
+          // pause after a successful search re-emitted "submit the search"
+          // on the results page instead of advancing to video selection).
           continue;
         }
       }
@@ -634,11 +726,14 @@ export class AgentController {
         this.transition("RECOVERY");
         const rec = this.planRecovery(validation.reasons.join("; "));
         if (rec.terminal) {
+          await this.pauseTask(rec.terminalReason ?? "validation failed", runId);
           if (!this.alive(runId)) return;
-          this.bus.emit("TASK_FAILED", { reason: rec.terminalReason ?? "validation failed" });
-          this.transition("FAILED");
-          this.emitStatus();
-          break;
+          // No stepIndex change: the trust gate runs PRE-plan, so the
+          // counter still points at the next unplanned step. Decrementing
+          // here replays an already-verified step (verified live: a trust
+          // pause after a successful search re-emitted "submit the search"
+          // on the results page instead of advancing to video selection).
+          continue;
         }
         stepIndex = Math.max(0, stepIndex - 1);
         continue;
@@ -692,11 +787,14 @@ export class AgentController {
         this.transition("RECOVERY");
         const rec = this.planRecovery(evaluation.reasons.join("; "));
         if (rec.terminal) {
+          await this.pauseTask(rec.terminalReason ?? "replan failed", runId);
           if (!this.alive(runId)) return;
-          this.bus.emit("TASK_FAILED", { reason: rec.terminalReason ?? "replan failed" });
-          this.transition("FAILED");
-          this.emitStatus();
-          break;
+          // No stepIndex change: the trust gate runs PRE-plan, so the
+          // counter still points at the next unplanned step. Decrementing
+          // here replays an already-verified step (verified live: a trust
+          // pause after a successful search re-emitted "submit the search"
+          // on the results page instead of advancing to video selection).
+          continue;
         }
         stepIndex = Math.max(0, stepIndex - 1);
         continue;
@@ -711,13 +809,16 @@ export class AgentController {
           this.transition("RECOVERY");
           const rec = this.planRecovery(`re-observation failed during local verify: ${err instanceof Error ? err.message : String(err)}`);
           if (rec.terminal) {
+            await this.pauseTask(rec.terminalReason ?? "replan failed", runId);
             if (!this.alive(runId)) return;
-            this.bus.emit("TASK_FAILED", { reason: rec.terminalReason ?? "replan failed" });
-            this.transition("FAILED");
-            this.emitStatus();
-            break;
+            stepIndex = Math.max(0, stepIndex - 1);
+            continue;
           }
-          stepIndex = Math.max(0, stepIndex - 1);
+          // No stepIndex change: the trust gate runs PRE-plan, so the
+          // counter still points at the next unplanned step. Decrementing
+          // here replays an already-verified step (verified live: a trust
+          // pause after a successful search re-emitted "submit the search"
+          // on the results page instead of advancing to video selection).
           continue;
         }
         if (!this.alive(runId)) return;
@@ -726,13 +827,16 @@ export class AgentController {
           this.transition("RECOVERY");
           const rec = this.planRecovery(`local verify failed: ${recheck.reason}`);
           if (rec.terminal) {
+            await this.pauseTask(rec.terminalReason ?? "replan failed", runId);
             if (!this.alive(runId)) return;
-            this.bus.emit("TASK_FAILED", { reason: rec.terminalReason ?? "replan failed" });
-            this.transition("FAILED");
-            this.emitStatus();
-            break;
+            stepIndex = Math.max(0, stepIndex - 1);
+            continue;
           }
-          stepIndex = Math.max(0, stepIndex - 1);
+          // No stepIndex change: the trust gate runs PRE-plan, so the
+          // counter still points at the next unplanned step. Decrementing
+          // here replays an already-verified step (verified live: a trust
+          // pause after a successful search re-emitted "submit the search"
+          // on the results page instead of advancing to video selection).
           continue;
         }
         snapshot = fresh;
@@ -787,70 +891,114 @@ export class AgentController {
           this.transition("RECOVERY");
           const rec = this.planRecovery(`approval invalidated: page or target changed`);
           if (rec.terminal) {
+            await this.pauseTask(rec.terminalReason ?? "replan failed", runId);
             if (!this.alive(runId)) return;
-            this.bus.emit("TASK_FAILED", { reason: rec.terminalReason ?? "replan failed" });
-            this.transition("FAILED");
-            this.emitStatus();
-            break;
+            stepIndex = Math.max(0, stepIndex - 1);
+            continue;
           }
-          stepIndex = Math.max(0, stepIndex - 1);
+          // No stepIndex change: the trust gate runs PRE-plan, so the
+          // counter still points at the next unplanned step. Decrementing
+          // here replays an already-verified step (verified live: a trust
+          // pause after a successful search re-emitted "submit the search"
+          // on the results page instead of advancing to video selection).
           continue;
         }
         snapshot = fresh;
       }
 
-      // 6. ACT
+      // 6. ACT — every lifecycle event below carries the traceability
+      // envelope (taskId + canonical actionId + plan stepId) so logs
+      // reconstruct Groq → engine → background → content → DOM per action.
+      const trace = { taskId: this.taskId, actionId, stepId: this.currentStepId() };
       this.transition("ACTING");
-      this.bus.emit("ACTION_STARTED", { action: groundedAction });
+      // No-progress guard: the same state-changing action succeeding over
+      // and over with no other action between is a vacuous-verification
+      // spin (the repeated-press_key defect) — park it instead of letting
+      // recovery (which only counts failures) run forever. Read-only and
+      // viewport actions (scroll/wait/hover/focus/extract/…) are exempt:
+      // legitimately repeatable.
+      if (!NO_PROGRESS_GUARD_EXEMPT.has(groundedAction.action)) {
+        const signature = this.actionSignature(groundedAction);
+        let repeats = 0;
+        for (const entry of [...this.memory.all()].reverse()) {
+          // Observations, plans and verifications interleave executions —
+          // skip them. A failed execution or a different successful action
+          // breaks the streak (failures consume the recovery budget).
+          if (entry.kind !== "executed") continue;
+          if (!entry.ok || this.actionSignature(entry.action) !== signature) break;
+          repeats++;
+        }
+        if (repeats >= 3) {
+          this.failPlanStep(`no progress: ${describeSafetyAction(groundedAction)} verified ${repeats + 1} times without advancing the task`);
+          await this.pauseTask(
+            `No progress: ${describeSafetyAction(groundedAction)} keeps succeeding without moving the task forward. The page may need a different interaction.`,
+            runId,
+          );
+          if (!this.alive(runId)) return;
+          // No stepIndex change: the trust gate runs PRE-plan, so the
+          // counter still points at the next unplanned step. Decrementing
+          // here replays an already-verified step (verified live: a trust
+          // pause after a successful search re-emitted "submit the search"
+          // on the results page instead of advancing to video selection).
+          continue;
+        }
+      }
+      this.bus.emit("ACTION_STARTED", { action: groundedAction, ...trace });
       this.activatePlanStep();
       const result = await this.executeAction(groundedAction, this.workingTabId);
       if (!this.alive(runId)) return;
       this.memory.push({ kind: "executed", action: groundedAction, ok: result.ok, details: result.details, ts: Date.now() });
 
       if (!result.ok) {
-        this.bus.emit("ACTION_FAILED", { action: groundedAction, error: result.error ?? "action failed", details: result.details });
+        this.bus.emit("ACTION_FAILED", { action: groundedAction, error: result.error ?? "action failed", details: result.details, ...trace });
         this.failPlanStep(result.error ?? "action failed");
         this.transition("RECOVERY");
         const rec = this.planRecovery(result.error ?? "unknown");
         if (rec.terminal) {
+          await this.pauseTask(rec.terminalReason ?? "action failed", runId);
           if (!this.alive(runId)) return;
-          this.bus.emit("TASK_FAILED", { reason: rec.terminalReason ?? "action failed" });
-          this.transition("FAILED");
-          this.emitStatus();
-          break;
+          // No stepIndex change: the trust gate runs PRE-plan, so the
+          // counter still points at the next unplanned step. Decrementing
+          // here replays an already-verified step (verified live: a trust
+          // pause after a successful search re-emitted "submit the search"
+          // on the results page instead of advancing to video selection).
+          continue;
         }
         stepIndex = Math.max(0, stepIndex - 1);
         continue;
       }
-      this.bus.emit("ACTION_SUCCEEDED", { action: groundedAction, hint: result.hint });
+      this.bus.emit("ACTION_SUCCEEDED", { action: groundedAction, hint: result.hint, ...trace });
       this.recovery.reset();
 
       // 7. VERIFY — after a tab-changing browser action the new page needs
       // time to load and re-announce its content bridge; wait for it instead
       // of failing on the first cold observation.
       this.transition("VERIFYING");
-      this.bus.emit("VERIFICATION_STARTED", { action: groundedAction });
+      this.bus.emit("VERIFICATION_STARTED", { action: groundedAction, ...trace });
       const freshSnapshot = await this.observeFresh(groundedAction, this.workingTabId, snapshot.url);
       const verification = await verifyAction(groundedAction, result.hint, snapshot, () => freshSnapshot);
       if (!this.alive(runId)) return;
       this.memory.push({ kind: "verified", action: groundedAction, ok: verification.ok, evidence: verification.evidence, ts: Date.now() });
 
       if (!verification.ok) {
-        this.bus.emit("VERIFICATION_FAILED", { action: groundedAction, evidence: verification.evidence });
+        this.bus.emit("VERIFICATION_FAILED", { action: groundedAction, evidence: verification.evidence, ...trace });
         this.failPlanStep(verification.evidence.join("; "));
         this.transition("RECOVERY");
         const rec = this.planRecovery(verification.evidence.join("; "));
         if (rec.terminal) {
+          await this.pauseTask(rec.terminalReason ?? "verification failed", runId);
           if (!this.alive(runId)) return;
-          this.bus.emit("TASK_FAILED", { reason: rec.terminalReason ?? "verification failed" });
-          this.transition("FAILED");
-          this.emitStatus();
-          break;
+          // No stepIndex change: the trust gate runs PRE-plan, so the
+          // counter still points at the next unplanned step. Decrementing
+          // here replays an already-verified step (verified live: a trust
+          // pause after a successful search re-emitted "submit the search"
+          // on the results page instead of advancing to video selection).
+          continue;
         }
         stepIndex = Math.max(0, stepIndex - 1);
         continue;
       }
-      this.bus.emit("VERIFICATION_SUCCEEDED", { action: groundedAction, evidence: verification.evidence });
+      this.bus.emit("VERIFICATION_SUCCEEDED", { action: groundedAction, evidence: verification.evidence, ...trace });
       this.completePlanStep();
 
       // 7b. POST-ACTION DRIFT CHECK (Feature #4) — did the world move
@@ -890,8 +1038,12 @@ export class AgentController {
         }
         if (postDrift.decision === "PAUSE" || postDrift.decision === "REPLAN") {
           this.emitDrift(postDrift, "post");
-          if (this.driftFailed(postDrift.reasons.join("; "), runId)) break;
-          stepIndex = Math.max(0, stepIndex - 1);
+          if (await this.driftFailed(postDrift.reasons.join("; "), runId)) break;
+          // No stepIndex change: the trust gate runs PRE-plan, so the
+          // counter still points at the next unplanned step. Decrementing
+          // here replays an already-verified step (verified live: a trust
+          // pause after a successful search re-emitted "submit the search"
+          // on the results page instead of advancing to video selection).
           continue;
         }
         if (postDrift.decision === "VERIFY") {
@@ -905,14 +1057,15 @@ export class AgentController {
       this.transition("OBSERVING");
       } catch (err) {
         // The live bridge dropped or the tab became unsupported (chrome://
-        // and friends) mid-task. Abort honestly: never leave a false
-        // OBSERVING/ACTIVE standing after the page can no longer be driven.
-        // A superseded loop must not fail the task that replaced it.
+        // and friends) mid-task. Never leave a false OBSERVING/ACTIVE
+        // standing after the page can no longer be driven — and never
+        // surface it as a global error: the user can reload or navigate
+        // and resume. A superseded loop must not touch the task at all.
         if (!this.alive(runId)) return;
-        this.bus.emit("TASK_FAILED", { reason: this.mapPlatformError(err) });
-        this.transition("FAILED");
-        this.emitStatus();
-        break;
+        await this.pauseTask(this.mapPlatformError(err), runId);
+        if (!this.alive(runId)) return;
+        stepIndex = Math.max(0, stepIndex - 1);
+        continue;
       }
     }
   }
@@ -1301,15 +1454,59 @@ export class AgentController {
 
   /**
    * Terminal completion funnel (single source: both completion sites).
+   * TASK_COMPLETED means EXECUTION-complete: every planned browser action
+   * ran with successful results. It never claims the OBJECTIVE was met —
+   * that verdict belongs to submitVerification() (manual, Phase 17).
+   * A finish with zero executed actions and no answer is a planner
+   * give-up, not a completion: it parks instead of declaring success.
    * Persists visual memory as a fire-and-forget checkpoint — storage
    * can never fail or stall the finished task.
    */
   private completeTask(result: string, runId: number, completed: boolean): void {
     if (!this.alive(runId)) return;
+    this.verification = "pending";
     this.bus.emit("TASK_COMPLETED", { result });
     this.transition("COMPLETED");
     this.emitStatus();
     this.persistVisualMemory(completed);
+  }
+
+  /**
+   * Latest terminal answer the planner produced (finish result / ask_user
+   * reason), or null when the plan carries no answer at all. An EMPTY
+   * terminal answer is always a defect signal — no legitimate flow emits
+   * one (backend requires result text; local fallbacks slice live page
+   * text) — so it can never complete a task, no matter what ran before.
+   */
+  private terminalAnswer(): string | null {
+    const terminal = [...this.memory.all()]
+      .reverse()
+      .find((e) => e.kind === "planned" && (e.action.action === "finish" || e.action.action === "ask_user"));
+    if (!terminal || terminal.kind !== "planned") return null;
+    const answer =
+      terminal.action.action === "finish" ? terminal.action.result : terminal.action.reason;
+    return answer?.trim() ? answer : null;
+  }
+
+  /**
+   * Manual objective verification (Phase 17). Callable only after the run
+   * reached execution-complete and before any stop/reset: records whether
+   * the human-confirmed objective was met. Late, duplicate, or
+   * out-of-lifecycle calls are ignored — verification can neither revive
+   * a task nor rewrite its execution record.
+   */
+  submitVerification(ok: boolean, note?: string): void {
+    if (this.state.status !== "COMPLETED" || this.verification !== "pending") return;
+    this.verification = ok ? "passed" : "failed";
+    this.bus.emit("TASK_VERIFIED", { taskId: this.taskId, ok, note });
+  }
+
+  /** Plan-step id driving the current action (traceability envelope). */
+  private currentStepId(): string | undefined {
+    return (
+      this.planSteps.find((s) => s.status === "active")?.id ??
+      this.planSteps.find((s) => s.status === "pending")?.id
+    );
   }
 
   /** Feature #5 recall: compatible prior layout → planner hint lines. */
@@ -1374,10 +1571,15 @@ export class AgentController {
       !!lastExecuted && lastExecuted.ok && ["navigate", "new_tab", "switch_tab"].includes(lastExecuted.action.action);
     const redirectHop = !!prevHost && !!host && prevHost !== host && !navigatedByAgent && !tabSwitched;
     if (redirectHop) this.trustRedirects++;
+    // Brand tokens feed lookalike-domain and brand-mismatch checks: only
+    // site/platform entities are brand identity. Query words are search
+    // terms, never brands — including them fired BRAND_DOMAIN_MISMATCH on
+    // every results page whose title echoes the query (verified live:
+    // "beginner"/"tutorial" vs youtube.com).
     const brandTokens: string[] = [];
     if (intent) {
       for (const e of intent.entities) {
-        if (e.label === "site" || e.label === "platform" || e.label === "query") {
+        if (e.label === "site" || e.label === "platform") {
           for (const t of e.value.toLowerCase().split(/\W+/)) {
             if (t.length >= 4 && brandTokens.length < 8 && !brandTokens.includes(t)) brandTokens.push(t);
           }
@@ -1393,10 +1595,19 @@ export class AgentController {
       taskId: this.taskId,
       url,
       prevUrl: prevObservation?.url ?? null,
-      // Task-owned hosts only: seed + agent navigation chain. The origin
-      // tab is user context, deliberately excluded — first contact with
-      // ANY host is unverified until evidence says otherwise.
-      expectedHosts: [...this.allowedDomains].filter((h) => h !== this.originHost),
+      // Task-owned hosts: seed + agent navigation chain. The origin tab
+      // is user context and stays excluded — UNLESS it is also an explicit
+      // task destination (seed) or agent-navigated: then it is task-owned
+      // by selection/arrival. Filtering unconditionally blinded every
+      // assessment when a task starts on its destination host (verified
+      // live: youtube.com seed == youtube.com origin → permanent
+      // UNKNOWN_DOMAIN on every page of the run).
+      expectedHosts: (() => {
+        const seed = new Set((intent?.seedHosts ?? []).map((h) => h.toLowerCase()));
+        return [...this.allowedDomains].filter(
+          (h) => h.toLowerCase() !== this.originHost.toLowerCase() || seed.has(h.toLowerCase()),
+        );
+      })(),
       navigatedByAgent,
       redirectHop,
       redirectCount: this.trustRedirects,
@@ -1447,14 +1658,15 @@ export class AgentController {
    * terminates honestly instead of looping forever. Returns true when
    * the loop must break.
    */
-  private driftFailed(reason: string, runId: number): boolean {
+  private async driftFailed(reason: string, runId: number): Promise<boolean> {
     this.transition("RECOVERY");
     const rec = this.planRecovery(`intent drift: ${reason}`);
     if (!rec.terminal) return false;
     if (!this.alive(runId)) return true;
-    this.bus.emit("TASK_FAILED", { reason: rec.terminalReason ?? reason });
-    this.transition("FAILED");
-    this.emitStatus();
+    // Recoverable drift (PAUSE/REPLAN exhausted, boundary drift) parks
+    // the task — ABORT (injection) still fails via its own TASK_FAILED
+    // path above and never reaches here.
+    await this.pauseTask(rec.terminalReason ?? reason, runId);
     return true;
   }
 
@@ -1475,11 +1687,58 @@ export class AgentController {
    */
   private planRecovery(reason: string): { terminal: boolean; terminalReason?: string } {
     const recoveryAction = this.recovery.plan(reason);
-    this.bus.emit("RECOVERY_ATTEMPT", { attempt: this.recovery.attempt, reason, strategy: recoveryAction.kind });
+    // Retry observability: the action under recovery rides along (value-free
+    // label only) so each attempt carries attempt + reason + action +
+    // retry decision.
+    const lastPlanned = [...this.memory.all()].reverse().find((e) => e.kind === "planned");
+    this.bus.emit("RECOVERY_ATTEMPT", {
+      attempt: this.recovery.attempt,
+      reason,
+      strategy: recoveryAction.kind,
+      action: lastPlanned && lastPlanned.kind === "planned" ? describeSafetyAction(lastPlanned.action) : undefined,
+    });
     if (recoveryAction.kind === "give_up") {
       return { terminal: true, terminalReason: recoveryAction.reason };
     }
     return { terminal: false };
+  }
+
+  /**
+   * Terminal task pause (single source for ALL recoverable exhaustion:
+   * validation / action / verification / drift / trust-pause / platform
+   * failures). Parks the loop with no timers and no background work —
+   * nothing executes again until the user resumes (the loop re-observes
+   * and retries the failed step) or stops (the generation is orphaned).
+   *
+   * Emits TASK_PAUSED, never TASK_FAILED: an ordinary execution failure
+   * is task state (PAUSED + reason in the task UI), not a global
+   * application error. TASK_FAILED is reserved for policy refusals
+   * (safety BLOCK), hostile findings (drift ABORT, trust BLOCK).
+   */
+  private async pauseTask(reason: string, runId: number, technical?: string): Promise<void> {
+    const step = this.planSteps.find((s) => s.status === "active" || s.status === "failed");
+    this.transition("PAUSED");
+    this.bus.emit("TASK_PAUSED", { reason, step: step?.text, technical });
+    this.emitStatus();
+    this.paused = true;
+    await this.waitWhilePaused();
+    this.paused = false;
+    if (!this.alive(runId)) return;
+    this.transition("OBSERVING");
+  }
+
+  /**
+   * Value-free signature of an executed action for the no-progress guard
+   * (action + target identity + key only — never typed text or URLs).
+   */
+  private actionSignature(action: AgentAction): string {
+    return [
+      action.action,
+      action.target?.elementId ?? "",
+      action.target?.role ?? "",
+      action.target?.name ?? "",
+      action.key ?? "",
+    ].join("|");
   }
 }
 
@@ -1498,6 +1757,14 @@ function isStaleContextError(err: unknown): boolean {
   return raw.includes("stale_context");
 }
 
+/** True when the content bridge exists but is momentarily cold (reloading
+ *  page, fresh navigation, worker restart) — worth one bounded re-poll,
+ *  unlike a wrong-tab or unsupported-page reading. */
+function isBridgeColdError(err: unknown): boolean {
+  const raw = err instanceof Error ? err.message : String(err);
+  return raw.includes("content_script_not_ready") || raw.includes("no_extension");
+}
+
 /**
  * Value-free action label for confirmation surfaces and logs: action
  * name + target label only. Typed text, URLs and option values are
@@ -1510,3 +1777,30 @@ function describeSafetyAction(action: AgentAction): string {
 }
 
 const delay = (ms: number): Promise<void> => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * Viewport-only actions: observable motion, never page accomplishment.
+ * Excluded from completion substance (a run of pure waits/scrolls plus
+ * an empty finish completes nothing describable).
+ */
+const NON_EVIDENTIARY_ACTIONS: ReadonlySet<string> = new Set(["wait", "scroll", "hover", "focus"]);
+
+/**
+ * Actions exempt from the no-progress guard: read-only, viewport, or
+ * navigation primitives that legitimately repeat (infinite scroll,
+ * polling waits, re-observation hovers, page reloads, …).
+ */
+const NO_PROGRESS_GUARD_EXEMPT: ReadonlySet<string> = new Set([
+  "scroll",
+  "wait",
+  "hover",
+  "focus",
+  "extract",
+  "navigate",
+  "reload",
+  "back",
+  "forward",
+  "switch_tab",
+  "finish",
+  "ask_user",
+]);

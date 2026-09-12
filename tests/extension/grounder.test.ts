@@ -185,15 +185,21 @@ describe("content bridge async responses (§F — execution results must arrive)
     expect((input as HTMLInputElement).value).toBe("tutorial");
   });
 
-  it("CTX_OBSERVE still answers synchronously", async () => {
+  it("CTX_OBSERVE keeps the channel open and delivers a settled snapshot", async () => {
     (globalThis as Record<string, unknown>).chrome ??= { runtime: {} };
     const { handleMessage } = await import("@/content/main");
     document.body.innerHTML = `<button>Tutorial</button>`;
     let response: unknown = null;
     const keptOpen = handleMessage({ type: "CTX_OBSERVE" }, {}, (r: unknown) => { response = r; });
-    expect(keptOpen).not.toBe(true);
+    // Render-aware read is async (same pattern as CTX_EXECUTE): the MV3
+    // channel must stay open until the settled snapshot is delivered.
+    expect(keptOpen).toBe(true);
+    const t0 = Date.now();
+    while (response === null && Date.now() - t0 < 5000) {
+      await new Promise((r) => setTimeout(r, 200));
+    }
     expect(response).toMatchObject({ type: "CTX_OBSERVE_RESULT" });
-  });
+  }, 10000);
 });
 
 describe("stale-id semantic re-grounding", () => {
@@ -225,8 +231,17 @@ describe("stale-id semantic re-grounding", () => {
   });
 });
 
-describe("press_key needs no indexed target (live TEST 2 defect)", () => {
-  it("Enter submits from the focused element and reports ok", async () => {
+describe("press_key Enter is a verified submission, not a blind dispatch", () => {
+  it("Enter with no focused element fails instead of typing into the void", async () => {
+    const { executeAction } = await import("@/content/executor");
+    document.body.innerHTML = `<input type="search" aria-label="Search">`;
+    // Deliberately unfocused: activeElement is <body>.
+    const result = await executeAction({ action: "press_key", key: "Enter" } as never);
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe("no_focused_element");
+  });
+
+  it("Enter dispatched with no page effect fails honestly (dispatch is not success)", async () => {
     const { executeAction } = await import("@/content/executor");
     document.body.innerHTML = `<input type="search" aria-label="Search">`;
     const input = document.querySelector("input") as HTMLInputElement;
@@ -234,7 +249,36 @@ describe("press_key needs no indexed target (live TEST 2 defect)", () => {
     const seen: string[] = [];
     input.addEventListener("keydown", (e) => seen.push((e as KeyboardEvent).key));
     const result = await executeAction({ action: "press_key", key: "Enter" } as never);
-    expect(result).toMatchObject({ ok: true });
+    // The keystroke really was dispatched to the focused input…
     expect(seen).toEqual(["Enter"]);
+    // …but nothing on the page reacted and no submit button exists.
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe("submit_no_effect");
+  });
+
+  it("Enter that changes the page reports ok", async () => {
+    const { executeAction } = await import("@/content/executor");
+    document.body.innerHTML = `<input type="search" aria-label="Search">`;
+    const input = document.querySelector("input") as HTMLInputElement;
+    input.focus();
+    input.addEventListener("keydown", (e) => {
+      if ((e as KeyboardEvent).key === "Enter") {
+        document.body.insertAdjacentHTML("beforeend", `<div class="results">results here</div>`);
+      }
+    });
+    const result = await executeAction({ action: "press_key", key: "Enter" } as never);
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  it("Enter falls back to the search button when key dispatch does nothing", async () => {
+    const { executeAction } = await import("@/content/executor");
+    document.body.innerHTML = `<input type="search" aria-label="Search"><button aria-label="Search">Go</button>`;
+    const input = document.querySelector("input") as HTMLInputElement;
+    input.focus();
+    document.querySelector("button")!.addEventListener("click", () => {
+      document.body.insertAdjacentHTML("beforeend", `<div class="results">results here</div>`);
+    });
+    const result = await executeAction({ action: "press_key", key: "Enter" } as never);
+    expect(result).toMatchObject({ ok: true, hint: { text: "submitted via button" } });
   });
 });

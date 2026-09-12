@@ -50,7 +50,9 @@ describe("StateManager", () => {
     sm.transition("ACTING");
     sm.transition("VERIFYING");
     sm.transition("COMPLETED");
-    expect(sm.ui).toBe("SUCCESS");
+    // Execution-complete is not objective-complete: the UI awaits manual
+    // verification instead of auto-claiming success.
+    expect(sm.ui).toBe("AWAITING_VERIFY");
     expect(sm.isTerminal()).toBe(true);
   });
 });

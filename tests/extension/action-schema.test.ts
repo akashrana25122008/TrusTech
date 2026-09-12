@@ -43,6 +43,16 @@ describe("action-schema validateAction", () => {
   });
 
   it("exposes the full allowed action surface", () => {
-    expect(ALL_ACTION_NAMES.length).toBe(24);
+    expect(ALL_ACTION_NAMES.length).toBe(25);
+    expect(ALL_ACTION_NAMES).toContain("search");
+  });
+
+  it("search requires a query but not a target (executor self-resolves)", () => {
+    expect(validateAction({ action: "search" }).ok).toBe(false);
+    expect(validateAction({ action: "search", text: "" }).ok).toBe(false);
+    expect(validateAction({ action: "search", text: "beginner C tutorial" }).ok).toBe(true);
+    expect(
+      validateAction({ action: "search", target: { elementId: "el_010" }, text: "beginner C tutorial" }).ok,
+    ).toBe(true);
   });
 });

@@ -12,13 +12,18 @@ const SCHEMA = `Action kinds:
   navigate {"action":"navigate","url":"https://…"}
   new_tab / close_tab / switch_tab
   back / forward / reload
-  click / double_click / type / clear / select / check / uncheck / radio /
-  scroll / hover / focus / press_key
-  wait {"action":"wait","ms":300}
-  extract {"action":"extract","target":{"elementId":"el_001"}}
-  submit / finish {"action":"finish","result":"answer text"}
+   click / double_click / type / clear / select / check / uncheck / radio /
+   scroll / hover / focus / press_key
+   search {"action":"search","target":{"elementId":"el_001"},"text":"query"}
+   wait {"action":"wait","ms":300}
+   extract {"action":"extract","target":{"elementId":"el_001"}}
+   submit / finish {"action":"finish","result":"answer text"}
 Target: {"target":{"elementId":"el_001"}} OR {"target":{"role":"button","name":"Search"}}
-Every value-bearing action may include {"expectedOutcome":{"type":"url_change"|"content_change"}}`;
+Every value-bearing action may include {"expectedOutcome":{"type":"url_change"|"content_change"}}
+Searching: ALWAYS use the search action for in-page search (type the query
+AND submit AND verify results in one step). NEVER emit type + press_key as
+a search — typing alone is not a completed search. press_key Enter is only
+for dismissing dialogs or activating an already-focused control.`;
 
 export interface BuiltPrompt {
   systemPrompt: string;

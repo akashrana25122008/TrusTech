@@ -16,7 +16,7 @@
 import * as THREE from "three";
 import type { BotState } from "./types";
 import { createGlowTexture, createDiscTexture } from "./glowTexture";
-import { createStarfield } from "./starfield";
+import { createStarfield, STAR_COUNT_DEFAULT, STAR_COUNT_LOW } from "./starfield";
 
 const CYAN = new THREE.Color(0x3fd8ff);
 const VIOLET = new THREE.Color(0x8b7bff);
@@ -263,7 +263,7 @@ export function createAgentBotScene(container: HTMLElement, lowQuality: boolean)
      shader (see starfield.ts). Atmospheric only — the bot stays the hero.
      Intensity follows the ALREADY state-driven glow, so stars never fake
      agent activity; they merely breathe with the real mode. */
-  const starfield = createStarfield({ count: lowQuality ? 520 : 1100 });
+  const starfield = createStarfield({ count: lowQuality ? STAR_COUNT_LOW : STAR_COUNT_DEFAULT });
   starfield.setPixelRatio(renderer.getPixelRatio());
   scene.add(starfield.points);
 

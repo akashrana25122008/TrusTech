@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from "vitest";
 import * as THREE from "three";
-import { createStarfield, mulberry32 } from "@/ui/agent-bot/starfield";
+import { createStarfield, mulberry32, STAR_COUNT_DEFAULT, STAR_COUNT_LOW, BRIGHTNESS_MULTIPLIER } from "@/ui/agent-bot/starfield";
 
 function attr(geo: THREE.BufferGeometry, name: string): number[] {
   return Array.from((geo.getAttribute(name) as THREE.BufferAttribute).array as Float32Array);
@@ -32,8 +32,8 @@ describe("starfield", () => {
     const sf = createStarfield({ count: 300, seed: 11 });
     const geo = sf.points.geometry;
     for (const s of attr(geo, "aSize")) expect(s).toBeGreaterThan(0), expect(s).toBeLessThan(0.2);
-    for (const b of attr(geo, "aBase")) expect(b).toBeGreaterThanOrEqual(0), expect(b).toBeLessThanOrEqual(0.7);
-    for (const a of attr(geo, "aAmp")) expect(a).toBeGreaterThanOrEqual(0), expect(a).toBeLessThanOrEqual(0.5);
+    for (const b of attr(geo, "aBase")) expect(b).toBeGreaterThanOrEqual(0), expect(b).toBeLessThanOrEqual(0.95);
+    for (const a of attr(geo, "aAmp")) expect(a).toBeGreaterThanOrEqual(0), expect(a).toBeLessThanOrEqual(0.65);
     for (const f of attr(geo, "aFreq")) expect(f).toBeGreaterThan(0), expect(f).toBeLessThanOrEqual(0.75);
     for (const p of attr(geo, "aPhase")) expect(p).toBeGreaterThanOrEqual(0), expect(p).toBeLessThanOrEqual(Math.PI * 2);
     sf.dispose();
@@ -85,6 +85,20 @@ describe("starfield", () => {
       sf.update(99.0, 0.5, true);
       sf.dispose();
     }).not.toThrow();
+  });
+
+  it("ships 2× density with a brightness lift by default", () => {
+    expect(STAR_COUNT_DEFAULT).toBe(2200);
+    expect(STAR_COUNT_LOW).toBe(1040);
+    expect(BRIGHTNESS_MULTIPLIER).toBeGreaterThan(1);
+    const sf = createStarfield({ seed: 7 });
+    expect(sf.points.geometry.getAttribute("position").count).toBe(STAR_COUNT_DEFAULT);
+    const bases = attr(sf.points.geometry, "aBase");
+    const mean = bases.reduce((m, b) => m + b, 0) / bases.length;
+    // Lifted well above the old ~0.4 dim average, still under the cap.
+    expect(mean).toBeGreaterThan(0.55);
+    expect(Math.max(...bases)).toBeLessThanOrEqual(0.95);
+    sf.dispose();
   });
 
   it("mulberry32 is stable", () => {

@@ -29,6 +29,30 @@ export function validateAction(
   if (TAB_ACTIONS.has(action.action)) return { ok: true };
   if (NAV_ONLY.has(action.action)) return { ok: true };
 
+  // SEARCH validates its target only when the planner attached one — a
+  // targetless search self-resolves the field in the executor, which
+  // fails honestly when no search field exists.
+  if (action.action === "search" && !action.target) return { ok: true };
+  if (action.action === "search" && action.target) {
+    const target = action.target;
+    if (!target.elementId && !target.selector && !(target.role && target.name)) {
+      return { ok: false, reasons: [`action "search" requires a target (elementId, role+name, or selector)`] };
+    }
+    if (target.elementId) {
+      const indexed = snapshot.elements.find((e) => e.id === target.elementId);
+      if (!indexed) {
+        return { ok: false, reasons: [`element "${target.elementId}" is not in the current observation`] };
+      }
+      if (!indexed.visible) {
+        return { ok: false, reasons: [`element "${target.elementId}" is not visible`] };
+      }
+      if (!indexed.enabled) {
+        return { ok: false, reasons: [`element "${target.elementId}" is disabled`] };
+      }
+    }
+    return { ok: true };
+  }
+
   // Actions that manipulate the page need a valid, live target.
   if (VALIDATE_ACTUAL.has(action.action)) {
     const target = action.target;

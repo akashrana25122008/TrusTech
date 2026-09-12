@@ -1,4 +1,4 @@
-import { Check, CircleDot, ScanLine, Bomb, Timer, User } from "lucide-react";
+import { Check, CircleDot, ScanLine, Bomb, Timer, User, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { AgentStateKey } from "@/shared/types";
 
@@ -14,6 +14,9 @@ const META: Record<AgentStateKey, { icon: LucideIcon; label: string }> = {
   WAITING: { icon: User, label: "Awaiting you" },
   PAUSED: { icon: Timer, label: "Paused" },
   ERROR: { icon: Bomb, label: "Blocked" },
+  AWAITING_VERIFY: { icon: User, label: "Verify the result" },
+  VERIFIED: { icon: Check, label: "Objective verified" },
+  VERIFY_FAILED: { icon: X, label: "Objective not met" },
 };
 
 export function StateIndicator({ status }: { status: AgentStateKey }) {

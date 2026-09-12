@@ -10,6 +10,9 @@ export const STATUS_LABEL: Record<AgentStateKey, string> = {
   WAITING: "WAITING",
   PAUSED: "PAUSED",
   ERROR: "ERROR",
+  AWAITING_VERIFY: "VERIFY",
+  VERIFIED: "VERIFIED",
+  VERIFY_FAILED: "NOT MET",
 };
 
 /* Minimal identity bar: brand + live status. Nothing else competes with

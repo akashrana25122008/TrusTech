@@ -1,15 +1,19 @@
 import { ChevronDown, ListTree } from "lucide-react";
-import { ActionTimeline } from "./ActionTimeline";
-import { DebugConsole } from "./DebugConsole";
+import { StatusSummary } from "./StatusSummary";
+import { TaskPlan } from "./TaskPlan";
+import { ExecutionTimeline } from "./ExecutionTimeline";
+import { VerificationPanel } from "./VerificationPanel";
+import { EventLog } from "./EventLog";
 import { finalStateSummary } from "./statusText";
-import type { AgentLogEntry, AgentState } from "@/shared/types";
+import type { AgentState } from "@/shared/types";
 
 /* ------------------------------------------------------------------ *
- * ProcessingDetails — the single collapsed-by-default drawer for all
- * technical agent processing. Every row is real runtime state:
- * steps + event log come straight from useAgentState; nothing here is
- * simulated. On wide panels the region docks to the LEFT with the bot
- * hero remaining visible on the right (see globals.css).
+ * ProcessingDetails — the agent execution dashboard. Collapsed it is a
+ * single compact row; expanded it layers STATUS SUMMARY → TASK PLAN →
+ * EXECUTION TIMELINE → VERIFICATION → EVENT LOG over the SAME live
+ * AgentState every other surface reads. Nothing here is simulated and
+ * no step is ever marked done by this layer — the controller owns all
+ * truth via PLAN_CHANGED and the event bus.
  * ------------------------------------------------------------------ */
 
 export function ProcessingDetails({
@@ -23,20 +27,9 @@ export function ProcessingDetails({
   open: boolean;
   onToggle: (open: boolean) => void;
 }) {
-  const { telemetry } = state;
-  const done = state.steps.filter((s) => s.status === "done").length;
   const final = finalStateSummary(state.status, state.actionText);
-  const executionEntries = state.log.filter((e) => e.level === "action" || e.level === "error" || e.level === "risk");
-  const verificationEntries = state.log.filter((e) => e.level === "success");
   const inputEntries = state.data?.inputs ? Object.entries(state.data.inputs) : [];
   const generatedEntries = state.data?.generated ? Object.entries(state.data.generated) : [];
-
-  const line = (entry: AgentLogEntry) => (
-    <div key={entry.id} className="processing__feed-line">
-      <span className="processing__feed-time">{new Date(entry.at).toLocaleTimeString([], { hour12: false })}</span>
-      <span className="processing__feed-text">{entry.text}</span>
-    </div>
-  );
 
   const dataRow = (k: string, v: string) => (
     <div key={k} className="processing__data-row">
@@ -56,48 +49,21 @@ export function ProcessingDetails({
       >
         <ListTree size={14} aria-hidden="true" />
         <span>{open ? "Hide processing details" : "View processing details"}</span>
+        <span className="processing__status-dot" data-status={state.status} aria-hidden="true" />
         <ChevronDown size={14} aria-hidden="true" className="processing__chevron" />
       </button>
 
       {open && (
       <div id="processing-details" className="processing__body" role="region" aria-label="Processing details">
         <div className="processing__body-inner">
-        <div className="processing__meta">
-          <span className="processing__meta-item">
-            Step {done}/{state.steps.length || telemetry.totalSteps || 0}
-          </span>
-          <span className="processing__meta-item">
-            <span className={`plan-source plan-source--${state.plan?.source ?? "local"}`}>
-              Reasoning · {state.plan?.source === "groq" ? "Groq" : "Local fallback"}
-            </span>
-          </span>
-          {state.plan?.fallbackReason && (
-            <span className="processing__meta-item" title={state.plan.fallbackReason}>
-              fallback: {state.plan.fallbackReason}
-            </span>
-          )}
-          <span className="processing__meta-dot" aria-hidden="true" />
-          <span className="processing__meta-item processing__meta-item--tab">
-            {telemetry.currentTab || "Your page"}
-          </span>
-          {telemetry.currentUrl ? (
-            <>
-              <span className="processing__meta-dot" aria-hidden="true" />
-              <span className="processing__meta-item processing__meta-item--url" title={telemetry.currentUrl}>
-                {telemetry.currentUrl}
-              </span>
-            </>
-          ) : null}
-          <span className="processing__meta-dot" aria-hidden="true" />
-          <span className="processing__meta-item">Privacy {telemetry.privacy}</span>
-          {typeof telemetry.redacted === "number" && telemetry.redacted > 0 && (
-            <span className="processing__meta-item">· {telemetry.redacted} redacted</span>
-          )}
-        </div>
+        <StatusSummary state={state} />
 
         {final && (
           <div className="processing__final" data-state={state.status}>
             {state.status === "ERROR" && <div className="block-eyebrow">FAILURE / STOP REASON</div>}
+            {state.status === "PAUSED" && <div className="block-eyebrow">PAUSED — REASON</div>}
+            {state.status === "AWAITING_VERIFY" && <div className="block-eyebrow">EXECUTION COMPLETE — VERIFY THE RESULT YOURSELF</div>}
+            {state.status === "VERIFY_FAILED" && <div className="block-eyebrow">OBJECTIVE NOT MET</div>}
             <span className="processing__final-label">{final.label}</span>
             <span className="processing__final-detail">{final.detail}</span>
           </div>
@@ -127,26 +93,13 @@ export function ProcessingDetails({
           </div>
         )}
 
-        <ActionTimeline steps={state.steps} meta={state.plan} />
+        <TaskPlan steps={state.steps} meta={state.plan} />
 
-        <div className="processing__feed">
-          <div className="block-eyebrow">EXECUTION</div>
-          {executionEntries.length === 0 ? (
-            <div className="timeline-empty">No page actions yet.</div>
-          ) : (
-            executionEntries.slice(-12).map(line)
-          )}
-        </div>
-        <div className="processing__feed">
-          <div className="block-eyebrow">VERIFICATION</div>
-          {verificationEntries.length === 0 ? (
-            <div className="timeline-empty">No verified outcomes yet.</div>
-          ) : (
-            verificationEntries.slice(-8).map(line)
-          )}
-        </div>
+        <ExecutionTimeline log={state.log} />
 
-        <DebugConsole status={state.status} log={state.log.slice(-40)} onClear={onClearLog} />
+        <VerificationPanel state={state} />
+
+        <EventLog log={state.log} status={state.status} onClear={onClearLog} />
         </div>
       </div>
       )}

@@ -132,7 +132,9 @@ export function assessAction(
     reasons.push("File upload / document handoff leaves the device");
     return { level: "HIGH", reasons, requiresConfirmation: true };
   }
-  if (action.action === "type") {
+  // SEARCH types its query into the field as part of the composite, so
+  // the same secret/PII typing gates apply as for a bare type action.
+  if (action.action === "type" || action.action === "search") {
     const field = (action.target?.name ?? "").toLowerCase();
     if (/password|otp|pin\b|2fa|cvv|cvc|card\s*(number|no)|ssn/i.test(field)) {
       reasons.push("Typing into a credential / payment field");

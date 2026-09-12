@@ -79,9 +79,15 @@ export function handleMessage(
       break;
 
     case "CTX_OBSERVE": {
-      const { snapshot } = pageObserver.observe();
-      sendResponse({ type: "CTX_OBSERVE_RESULT", payload: snapshot });
-      break;
+      // Render-aware read: wait for DOM quiescence (bounded) so the
+      // planner/verifier never decide on a half-painted page. Async
+      // reply keeps the MV3 channel open until the settled snapshot
+      // is delivered (same pattern as CTX_EXECUTE below).
+      void pageObserver.settled(600, 2500).then(() => {
+        const { snapshot } = pageObserver.observe();
+        sendResponse({ type: "CTX_OBSERVE_RESULT", payload: snapshot });
+      });
+      return true;
     }
     case "CTX_GROUND": {
       sendResponse({ type: "CTX_GROUND_RESULT", payload: groundTarget(payload.target as never) });

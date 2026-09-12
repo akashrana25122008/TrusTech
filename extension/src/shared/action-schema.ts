@@ -5,6 +5,11 @@
  * actions. Every action passes: JSON parse → schema validation → target
  * validation → risk validation → execution. Free-form output is never
  * executed.
+ *
+ * SEARCH is a semantic composite, not a text-entry instruction: it
+ * resolves a search input, enters the query, submits (Enter, then search-
+ * button fallback), and verifies result state. Typing a query is only the
+ * input stage — SEARCH succeeds solely on verified results.
  * ------------------------------------------------------------------ */
 
 export type ActionName =
@@ -18,6 +23,7 @@ export type ActionName =
   | "click"
   | "double_click"
   | "type"
+  | "search"
   | "clear"
   | "select"
   | "check"
@@ -35,7 +41,7 @@ export type ActionName =
 
 export const ALL_ACTION_NAMES: readonly ActionName[] = [
   "navigate", "new_tab", "close_tab", "switch_tab", "back", "forward", "reload",
-  "click", "double_click", "type", "clear", "select", "check", "uncheck",
+  "click", "double_click", "type", "search", "clear", "select", "check", "uncheck",
   "radio", "scroll", "hover", "focus", "press_key", "wait", "extract",
   "submit", "finish", "ask_user",
 ];
@@ -83,7 +89,7 @@ export interface AgentAction {
   target?: TargetSpec;
   /** navigate / new_tab. */
   url?: string;
-  /** type / extract-label. */
+  /** type / search-query / extract-label. */
   text?: string;
   /** select option (text or value). */
   option?: string;
@@ -97,7 +103,11 @@ export interface AgentAction {
   expectedOutcome?: ExpectedOutcome;
 }
 
-/** Action names that require a page-level target. */
+/**
+ * Action names that require a page-level target. "search" is deliberately
+ * absent: its query is required but its input is optional — the executor
+ * self-resolves a search field (and fails honestly when none exists).
+ */
 const PAGE_TARGET_ACTIONS: ReadonlySet<ActionName> = new Set([
   "click", "double_click", "type", "clear", "select", "check", "uncheck",
   "radio", "scroll", "hover", "focus", "submit",
@@ -107,6 +117,11 @@ const PAGE_TARGET_ACTIONS: ReadonlySet<ActionName> = new Set([
 const REQUIRED: Partial<Record<ActionName, (a: AgentAction) => boolean>> = {
   navigate: (a) => typeof a.url === "string" && a.url.length > 0,
   type: (a) => typeof a.text === "string",
+  // SEARCH always carries its query; the target (search input) is
+  // optional because the executor self-resolves a search field when the
+  // planner omits one. A missing query is a planning defect, never
+  // something the executor may invent.
+  search: (a) => typeof a.text === "string" && a.text.length > 0,
   select: (a) => typeof a.option === "string",
   press_key: (a) => typeof a.key === "string",
   wait: (a) => typeof a.ms === "number" && a.ms > 0,

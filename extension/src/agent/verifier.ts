@@ -89,6 +89,30 @@ export async function verifyAction(
     }
   }
 
+  // SEARCH — the strict composite outcome. Typing the query is only the
+  // input stage: success requires evidence the browser ENTERED result
+  // state (navigation to results, or fresh result content carrying the
+  // query). Suggestions appearing, text sitting in the box, or an
+  // exception-free dispatch are explicitly NOT success.
+  if (action.action === "search") {
+    const query = (action.text ?? "").trim();
+    if (after.url !== preSnapshot.url) {
+      evidence.push(`search navigated: ${after.url}`);
+      return { ok: true, evidence };
+    }
+    const textGrew = after.visibleText !== preSnapshot.visibleText;
+    const itemsChanged = after.counted !== preSnapshot.counted;
+    if (textGrew && itemsChanged && query && after.visibleText.includes(query)) {
+      evidence.push("search results rendered for the query");
+      return { ok: true, evidence };
+    }
+    evidence.push(
+      `no search-result state (url unchanged; text ${textGrew ? "changed" : "unchanged"}; ` +
+        `items ${itemsChanged ? "changed" : "unchanged"}${query && !after.visibleText.includes(query) ? "; query absent from page" : ""})`,
+    );
+    return { ok: false, evidence };
+  }
+
   // content change — any visible text delta or new elements.
   if (expected.type === "content_change") {
     if (after.visibleText !== preSnapshot.visibleText || after.counted !== preSnapshot.counted) {

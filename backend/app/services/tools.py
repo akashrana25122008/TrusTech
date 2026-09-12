@@ -100,6 +100,25 @@ TOOL_CATALOG: list[ToolSpec] = [
         "outcome": "element_state (the typed value is read back from the element)",
     },
     {
+        "name": "search",
+        "description": (
+            "Run a full in-page search: enter the query into a search field, "
+            "submit it, and verify results. This is the ONLY honest way to "
+            "search — never split it into type + press_key yourself."
+        ),
+        "args": {
+            "target": "{elementId} of the search field, required when visible",
+            "text": "string, required, the search query",
+        },
+        "required": ["text"],
+        "constraints": (
+            "The query is typed only after the input is focused and verified; "
+            "submission prefers Enter, then falls back to the search button; "
+            "the step succeeds only when result state is observed."
+        ),
+        "outcome": "url_change (results page) or content_change with result items",
+    },
+    {
         "name": "clear",
         "description": "Clear an editable element.",
         "args": {"target": "{elementId}, required"},
@@ -165,11 +184,15 @@ TOOL_CATALOG: list[ToolSpec] = [
     },
     {
         "name": "press_key",
-        "description": "Press a keyboard key (e.g. Enter, Escape).",
+        "description": "Press a keyboard key (e.g. Escape, or Enter on an already-focused control).",
         "args": {"key": "string, required"},
         "required": ["key"],
-        "constraints": "Single keys only; no key-chord scripting.",
-        "outcome": "content_change (e.g. submitted results appear)",
+        "constraints": (
+            "Single keys only; no key-chord scripting. NEVER use press_key "
+            "Enter to submit a search — that is the search tool's job, which "
+            "verifies focus, submission, and result state."
+        ),
+        "outcome": "content_change (e.g. a dialog dismissed)",
     },
     {
         "name": "wait",

@@ -23,17 +23,27 @@ import { Lock } from "lucide-react";
 
 export function Panel() {
   const bridge = useAgentBridge();
-  const { state, startTask, stop, pause, resume, clearLog } = useAgentState(bridge);
+  const { state, startTask, stop, pause, resume, verifyObjective, clearLog } = useAgentState(bridge);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   const running =
     state.status !== "IDLE" &&
     state.status !== "SUCCESS" &&
     state.status !== "ERROR" &&
-    state.status !== "WAITING";
+    state.status !== "WAITING" &&
+    state.status !== "AWAITING_VERIFY" &&
+    state.status !== "VERIFIED" &&
+    state.status !== "VERIFY_FAILED";
 
-  const terminal = state.status === "SUCCESS" || state.status === "ERROR";
+  // Execution-complete and verified outcomes are terminal for controls:
+  // a new task starts from the composer, never by re-running silently.
+  const terminal =
+    state.status === "SUCCESS" ||
+    state.status === "ERROR" ||
+    state.status === "VERIFIED" ||
+    state.status === "VERIFY_FAILED";
   const idle = state.status === "IDLE";
+  const awaitingVerify = state.status === "AWAITING_VERIFY";
 
   const handleTask = useCallback(
     (task: string) => {
@@ -83,13 +93,49 @@ export function Panel() {
           <TaskInput onSubmit={handleTask} disabled={false} />
         )}
 
-        {!idle && !terminal && (
+        {!idle && !terminal && !awaitingVerify && (
           <LiveAgentControls
             state={state}
             onPause={pause}
             onResume={resume}
             onStop={stop}
           />
+        )}
+
+        {awaitingVerify && (
+          <div className="confirm-bar" role="group" aria-label="Verify the executed result">
+            <div className="confirm-bar__msg">
+              <span>
+                Execution complete — all planned browser actions ran. Please inspect the page yourself, then confirm the objective.
+              </span>
+            </div>
+            <div className="confirm-bar__actions">
+              <button
+                type="button"
+                className="btn-control btn-control--resume"
+                onClick={() => verifyObjective(true)}
+                aria-label="Confirm the objective was accomplished"
+              >
+                Objective met
+              </button>
+              <button
+                type="button"
+                className="btn-control btn-control--stop"
+                onClick={() => verifyObjective(false, state.actionText)}
+                aria-label="Report that the objective was not accomplished"
+              >
+                Not met
+              </button>
+            </div>
+          </div>
+        )}
+
+        {awaitingVerify && (
+          <div className="run-block" data-status={state.status}>
+            <button type="button" className="btn-control" onClick={stop} aria-label="Discard this task">
+              Discard
+            </button>
+          </div>
         )}
 
         {state.status === "WAITING" && (

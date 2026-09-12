@@ -16,6 +16,11 @@ const AGENT_TO_BOT: Record<AgentStateKey, BotState> = {
   SUCCESS: "success",
   PAUSED: "paused",
   ERROR: "error",
+  // Verification states reuse companion moods: awaiting input waits,
+  // a confirmed objective celebrates, a rejected one settles.
+  AWAITING_VERIFY: "waiting",
+  VERIFIED: "success",
+  VERIFY_FAILED: "idle",
 };
 
 /** Map an agent runtime/UI state to the 3D bot's visual state. */

@@ -188,6 +188,7 @@ export function interactionOp(action: AgentAction): string {
       return "navigate";
     case "type":
       return action.target?.role === "searchbox" ? "search_input" : "field_input";
+    case "search":
     case "press_key":
       return "submit";
     case "click":

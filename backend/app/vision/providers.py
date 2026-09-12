@@ -1,1 +1,0 @@
-"""Vision provider supported runtimes and model ids."""

@@ -29,7 +29,7 @@ export function mulberry32(seed: number): () => number {
 }
 
 export interface StarfieldOptions {
-  /** Total stars (bounded — a few hundred, never thousands). */
+  /** Total stars (bounded — a few thousand max, one draw call). */
   count?: number;
   /** Spherical shell the stars live in (bot sits near the origin). */
   radiusMin?: number;
@@ -37,6 +37,13 @@ export interface StarfieldOptions {
   /** Seed for the layout. */
   seed?: number;
 }
+
+/** Star density: 2× the original 1100-star field (single Points draw call). */
+export const STAR_COUNT_DEFAULT = 2200;
+/** Reduced density for low-power devices (2× the original 520). */
+export const STAR_COUNT_LOW = 1040;
+/** Brightness lift applied to the per-class base opacities. */
+export const BRIGHTNESS_MULTIPLIER = 1.5;
 
 const VERT = /* glsl */ `
   attribute float aSize;
@@ -94,9 +101,12 @@ export interface Starfield {
 /**
  * Build the starfield. Distribution (~70% tiny / 20% small / 8% medium /
  * 2% accent), far shells dimmer + slower, silhouette corridor kept clean.
+ * Brightness is variation-preserving: every class is lifted by
+ * BRIGHTNESS_MULTIPLIER with its rank order intact (tiny stay dimmest,
+ * accents stay brightest), so depth reads richer, not flatter.
  */
 export function createStarfield(options: StarfieldOptions = {}): Starfield {
-  const { count = 1100, radiusMin = 7, radiusMax = 15, seed = 20260912 } = options;
+  const { count = STAR_COUNT_DEFAULT, radiusMin = 7, radiusMax = 15, seed = 20260912 } = options;
   const rand = mulberry32(seed);
 
   const position = new Float32Array(count * 3);
@@ -125,14 +135,14 @@ export function createStarfield(options: StarfieldOptions = {}): Starfield {
     const bucket = rand();
     const sizeClass = bucket < 0.7 ? 0 : bucket < 0.9 ? 1 : bucket < 0.98 ? 2 : 3;
     const sizeBase = [0.028, 0.05, 0.08, 0.12][sizeClass];
-    const base = [0.42, 0.5, 0.6, 0.7][sizeClass] * (1 - depth * 0.38);
-    const amp = (sizeClass === 3 ? 0.4 : 0.2 + sizeClass * 0.06) * (1 - depth * 0.3);
+    const base = [0.42, 0.5, 0.6, 0.7][sizeClass] * BRIGHTNESS_MULTIPLIER * (1 - depth * 0.25);
+    const amp = (sizeClass === 3 ? 0.45 : 0.24 + sizeClass * 0.06) * (1 - depth * 0.3);
 
     position[placed * 3] = x;
     position[placed * 3 + 1] = y;
     position[placed * 3 + 2] = z;
     aSize[placed] = sizeBase * (0.8 + rand() * 0.45);
-    aBase[placed] = Math.min(0.7, base * (0.75 + rand() * 0.5));
+    aBase[placed] = Math.min(0.95, base * (0.75 + rand() * 0.5));
     aAmp[placed] = amp * (0.6 + rand() * 0.8);
     aPhase[placed] = rand() * Math.PI * 2;
     // Far stars breathe slower; all slow (periods of several seconds).

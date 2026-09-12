@@ -59,8 +59,11 @@ export function trackPageChanges(emit: Emitter): () => void {
   observer.observe(document.documentElement, {
     childList: true,
     subtree: true,
-    attributes: false,
-    characterData: false,
+    // Title/text stamping (polymer-style renderers fill textContent and
+    // attributes AFTER inserting shells): without these, a "quiet" DOM can
+    // still be half-painted. The settle cap bounds busy pages.
+    attributes: true,
+    characterData: true,
   });
   teardowns.push(() => observer.disconnect());
 

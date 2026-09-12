@@ -15,11 +15,14 @@ export class PageObserver {
   private snapshot: ObservationSnapshot | null = null;
   private tabId = -1;
   private teardown: (() => void) | null = null;
+  /** Last DOM/page activity seen (any tracked change kind). */
+  private lastActivity = 0;
 
   constructor(private emitSignal: (kind: PageChangeKind, url?: string) => void) {}
 
   start(tabId: number): void {
     this.tabId = tabId;
+    this.lastActivity = Date.now();
     this.teardown = trackPageChanges((kind, url) => this.markChanged(kind, url));
   }
 
@@ -33,7 +36,25 @@ export class PageObserver {
     // The page moved under us: any stored ids and text are suspect.
     if (kind === "mutation") clearIndex();
     this.snapshot = null;
+    this.lastActivity = Date.now();
     this.emitSignal(kind, url);
+  }
+
+  /**
+   * Wait until the page stops mutating (render quiescence) or the cap
+   * expires. Progressive renderers (SPA result lists, polymer stamping)
+   * otherwise hand the planner half-painted snapshots — e.g. a results
+   * page whose video links have no names yet. Always bounded; resolves
+   * false on cap so callers proceed with the freshest available read.
+   */
+  async settled(quietMs = 600, capMs = 2500): Promise<boolean> {
+    const t0 = Date.now();
+    for (;;) {
+      const idleFor = Date.now() - this.lastActivity;
+      if (idleFor >= quietMs) return true;
+      if (Date.now() - t0 >= capMs) return false;
+      await new Promise<void>((r) => window.setTimeout(r, 150));
+    }
   }
 
   /** Fresh snapshot for the agent (freshness: live when unchanged). */

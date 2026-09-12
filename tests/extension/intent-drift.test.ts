@@ -387,7 +387,7 @@ async function runTask(world: ReturnType<typeof stubWorld>, goal: string, planne
   const bus = new AgentEventBus();
   const events: string[] = [];
   const drifts: Array<{ decision: string; types: string[]; severity: string }> = [];
-  for (const e of ["TASK_COMPLETED", "TASK_FAILED", "RECOVERY_ATTEMPT", "SAFETY_DECIDED", "DRIFT_EVENT", "USER_INPUT_REQUIRED"] as const) {
+  for (const e of ["TASK_COMPLETED", "TASK_FAILED", "TASK_PAUSED", "RECOVERY_ATTEMPT", "SAFETY_DECIDED", "DRIFT_EVENT", "USER_INPUT_REQUIRED"] as const) {
     bus.on(e, (p) => {
       events.push(e);
       if (e === "DRIFT_EVENT") {
@@ -402,7 +402,17 @@ async function runTask(world: ReturnType<typeof stubWorld>, goal: string, planne
     });
   }
   const controller = new AgentController(world.adapter, bus, planner);
-  await controller.run(goal, 7);
+  // A paused loop parks (it does not return) until resumed or stopped —
+  // settle on any terminal event, then release the loop if it parked.
+  const terminal = new Promise<void>((resolve) => {
+    bus.on("TASK_COMPLETED", () => resolve());
+    bus.on("TASK_FAILED", () => resolve());
+    bus.on("TASK_PAUSED", () => resolve());
+  });
+  const runPromise = controller.run(goal, 7);
+  await terminal;
+  controller.stop();
+  await runPromise;
   return { events, drifts, executes: world.executes };
 }
 
@@ -563,7 +573,8 @@ describe("E2E intent drift (scenarios 1–10)", () => {
       "Search black running shoes under ₹3000",
       scripted([typeAgain(), typeAgain(), typeAgain(), typeAgain(), typeAgain()]),
     );
-    expect(r.events).toContain("TASK_FAILED");
+    expect(r.events).toContain("TASK_PAUSED");
+    expect(r.events).not.toContain("TASK_FAILED");
     expect(r.drifts.length).toBeGreaterThanOrEqual(2);
     expect(r.events.filter((e) => e === "RECOVERY_ATTEMPT").length).toBeLessThanOrEqual(4);
   }, 30000);

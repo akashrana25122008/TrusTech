@@ -110,7 +110,7 @@ async function runTask(
   const events: string[] = [];
   const safety: Array<{ actionId: string; decision: string }> = [];
   const asks: Array<{ actionId?: string }> = [];
-  for (const e of ["SAFETY_DECIDED", "ACTION_STARTED", "TASK_COMPLETED", "TASK_FAILED", "RECOVERY_ATTEMPT", "VERIFICATION_FAILED", "APPROVAL_INVALIDATED", "USER_INPUT_REQUIRED"] as const) {
+  for (const e of ["SAFETY_DECIDED", "ACTION_STARTED", "TASK_COMPLETED", "TASK_FAILED", "TASK_PAUSED", "RECOVERY_ATTEMPT", "VERIFICATION_FAILED", "APPROVAL_INVALIDATED", "USER_INPUT_REQUIRED"] as const) {
     bus.on(e, (p) => {
       events.push(e);
       if (e === "SAFETY_DECIDED") safety.push({ actionId: (p as { actionId: string }).actionId, decision: (p as { decision: string }).decision });
@@ -121,7 +121,17 @@ async function runTask(
     });
   }
   const controller = new AgentController(world.adapter, bus, planner);
-  await controller.run(goal, 7);
+  // A paused loop parks (it does not return) until resumed or stopped —
+  // settle on any terminal event, then release the loop if it parked.
+  const terminal = new Promise<void>((resolve) => {
+    bus.on("TASK_COMPLETED", () => resolve());
+    bus.on("TASK_FAILED", () => resolve());
+    bus.on("TASK_PAUSED", () => resolve());
+  });
+  const runPromise = controller.run(goal, 7);
+  await terminal;
+  controller.stop();
+  await runPromise;
   return { events, safety, asks, executes: world.executes, controller };
 }
 
@@ -429,7 +439,7 @@ describe("E2E safety gate (TEST 1–14)", () => {
     expect(r.events).toContain("TASK_COMPLETED");
   }, 30000);
 
-  it("TEST 9: stale page → REPLAN until retries exhaust, then honest failure", async () => {
+  it("TEST 9: stale page → REPLAN until retries exhaust, then honest pause (never a global error)", async () => {
     const world = stubWorld({ elements: [el("el_001", "button", "Go")] });
     // Tab query always disagrees with the snapshot → every plan is stale.
     world.adapter.queryActiveTab = async () => ({ id: 7, url: "https://example.com/elsewhere", title: "T" });
@@ -440,7 +450,8 @@ describe("E2E safety gate (TEST 1–14)", () => {
     const r = await runTask(world, "Press go", scripted([staleClick(), staleClick(), staleClick(), staleClick()]));
     expect(r.executes).toHaveLength(0);
     expect(r.events.filter((e) => e === "RECOVERY_ATTEMPT").length).toBeGreaterThan(0);
-    expect(r.events).toContain("TASK_FAILED");
+    expect(r.events).toContain("TASK_PAUSED");
+    expect(r.events).not.toContain("TASK_FAILED");
   }, 30000);
 
   it("TEST 10: expected result mismatch → STOP + REPLAN path", async () => {

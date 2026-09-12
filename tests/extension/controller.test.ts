@@ -59,6 +59,16 @@ function fakeWeb(failOn?: "type" | "press_key") {
         state.visibleText = `${state.visibleText} ${state.query} RESULTS: tutorial one, tutorial two`;
         return { ok: true };
       }
+      // SEARCH composite: the query is submitted and the page enters
+      // result state (same-host URL change, like a real search submission —
+      // a cross-host jump here would be genuine redirect drift).
+      if (act.action === "search") {
+        state.query = act.text ?? state.query;
+        state.results = true;
+        state.url = `${state.url.split("?")[0]}?q=${encodeURIComponent(state.query)}`;
+        state.visibleText = `${state.visibleText} ${state.query} RESULTS: tutorial one, tutorial two`;
+        return { ok: true, hint: { value: state.query } };
+      }
       if (act.action === "finish") return { ok: true, hint: {} };
       return { ok: false, error: `unhandled: ${act.action}` };
     }
@@ -137,10 +147,44 @@ describe("AgentController closed loop", () => {
 
     expect(state.query).toContain("youtube");
     expect(state.results).toBe(true);
-    // navigate → type → press_key → finish
-    expect(events).toEqual(["navigate", "type", "press_key", "finish"]);
+    // navigate → type → search (composite: submit + verified results) → finish
+    expect(events).toEqual(["navigate", "type", "search", "finish"]);
     expect(controller.status.runtime).toBe("COMPLETED");
   });
+
+  it("rides out transient bridge-cold reads instead of parking (SPA reload race)", async () => {
+    const web = fakeWeb();
+    let observes = 0;
+    const inner = web.adapter.sendToTabAndRespond;
+    web.adapter.sendToTabAndRespond = async (tabId: number, message: unknown) => {
+      if ((message as { type?: string })?.type === "CTX_OBSERVE") {
+        observes++;
+        // Simulate an SPA replacement dropping the bridge for two reads.
+        if (observes === 3 || observes === 4) {
+          return { type: "CTX_OBSERVE_RESULT", payload: { error: "content_script_not_ready" } };
+        }
+      }
+      return inner(tabId, message);
+    };
+    const bus = new AgentEventBus();
+    const events: string[] = [];
+    bus.on("ACTION_SUCCEEDED", ({ action }) => {
+      events.push(action.action);
+    });
+    let paused = false;
+    bus.on("TASK_PAUSED", () => {
+      paused = true;
+    });
+    const controller = new AgentController(web.adapter, bus);
+    bus.on("USER_INPUT_REQUIRED", () => controller.confirm());
+    const completed = new Promise<void>((resolve) => bus.on("TASK_COMPLETED", () => resolve()));
+    await controller.run("search youtube tutorial", 7);
+    await completed;
+
+    expect(paused).toBe(false);
+    expect(events).toEqual(["navigate", "type", "search", "finish"]);
+    expect(controller.status.runtime).toBe("COMPLETED");
+  }, 30000);
 
   it("pauses and resumes without wrecking the loop", async () => {
     const { adapter } = fakeWeb();
@@ -157,25 +201,35 @@ describe("AgentController closed loop", () => {
     expect(controller.status.runtime).toBe("COMPLETED");
   });
 
-  it("fails a task that the page cannot perform", async () => {
+  it("pauses (never global-errors) a task that the page cannot perform", async () => {
     const { adapter } = fakeWeb("type");
     const bus = new AgentEventBus();
     const events: string[] = [];
-    bus.on("TASK_FAILED", ({ reason }) => {
+    bus.on("TASK_PAUSED", ({ reason }) => {
       events.push(reason);
+    });
+    let failed = false;
+    bus.on("TASK_FAILED", () => {
+      failed = true;
     });
 
     const controller = new AgentController(adapter, bus);
     bus.on("USER_INPUT_REQUIRED", () => controller.confirm());
-    const fail = new Promise<void>((resolve) => bus.on("TASK_FAILED", () => resolve()));
-    await controller.run("search youtube tutorial", 7);
-    await fail;
+    const paused = new Promise<void>((resolve) => bus.on("TASK_PAUSED", () => resolve()));
+    const runPromise = controller.run("search youtube tutorial", 7);
+    await paused;
 
     expect(events.length).toBeGreaterThan(0);
-    expect(controller.status.runtime).toBe("FAILED");
+    expect(events[0]).toMatch(/exhausted \d+ retr/);
+    expect(controller.status.runtime).toBe("PAUSED");
+    expect(failed).toBe(false);
+    // The parked loop holds no timers: stop() releases it cleanly.
+    controller.stop();
+    await runPromise;
+    expect(controller.status.runtime).toBe("IDLE");
   });
 
-  it("fails gracefully when the tab becomes unsupported mid-task (no false OBSERVING/ACTIVE)", async () => {
+  it("pauses gracefully when the tab becomes unsupported mid-task (no false OBSERVING/ACTIVE, no global error)", async () => {
     // Bridge answers the handshake ping, then the page turns into an
     // unsupported scheme (chrome:// etc.) between observation steps.
     const dead = fakeWeb();
@@ -187,15 +241,22 @@ describe("AgentController closed loop", () => {
 
     const bus = new AgentEventBus();
     const reasons: string[] = [];
-    bus.on("TASK_FAILED", ({ reason }) => reasons.push(reason));
+    bus.on("TASK_PAUSED", ({ reason }) => reasons.push(reason));
+    let failed = false;
+    bus.on("TASK_FAILED", () => {
+      failed = true;
+    });
 
     const controller = new AgentController(dead.adapter, bus);
-    const failed = new Promise<void>((resolve) => bus.on("TASK_FAILED", () => resolve()));
-    await controller.run("search youtube tutorial", 7);
-    await failed;
+    const paused = new Promise<void>((resolve) => bus.on("TASK_PAUSED", () => resolve()));
+    const runPromise = controller.run("search youtube tutorial", 7);
+    await paused;
 
     expect(reasons[0]).toBe("Browser page cannot be controlled. Open a regular webpage to continue.");
-    expect(controller.status.runtime).toBe("FAILED");
+    expect(controller.status.runtime).toBe("PAUSED");
+    expect(failed).toBe(false);
+    controller.stop();
+    await runPromise;
   });
 
   it("follows the user onto a new active tab mid-task (multi-tab state by tabId)", async () => {
@@ -238,6 +299,13 @@ describe("AgentController closed loop", () => {
           state.results = true;
           state.visibleText = `${state.visibleText} ${state.query} RESULTS: one, two`;
           return { type: "CTX_EXECUTE_RESULT", payload: { ok: true } };
+        }
+        if (act.action === "search") {
+          state.query = act.text ?? state.query;
+          state.results = true;
+          state.url = `${state.url.split("?")[0]}?q=${encodeURIComponent(state.query)}`;
+          state.visibleText = `${state.visibleText} ${state.query} RESULTS: one, two`;
+          return { type: "CTX_EXECUTE_RESULT", payload: { ok: true, hint: { value: state.query } } };
         }
         if (act.action === "finish") return { type: "CTX_EXECUTE_RESULT", payload: { ok: true, hint: {} } };
         return { type: "CTX_EXECUTE_RESULT", payload: { ok: false, error: `unhandled: ${act.action}` } };
@@ -379,6 +447,12 @@ function fakeNewtabWeb() {
           state.results = true;
           return { type: "CTX_EXECUTE_RESULT", payload: { ok: true } };
         }
+        if (act.action === "search") {
+          state.query = act.text ?? state.query;
+          state.results = true;
+          state.url = `${state.url.split("?")[0]}?q=${encodeURIComponent(state.query)}`;
+          return { type: "CTX_EXECUTE_RESULT", payload: { ok: true, hint: { value: state.query } } };
+        }
         if (act.action === "finish") return { type: "CTX_EXECUTE_RESULT", payload: { ok: true, hint: {} } };
         return { type: "CTX_EXECUTE_RESULT", payload: { ok: false, error: `unhandled: ${act.action}` } };
       }
@@ -412,20 +486,26 @@ describe("AgentController on browser-internal pages", () => {  it("CASE 1/2/5: n
     expect(controller.status.runtime).toBe("COMPLETED");
   });
 
-  it("CASE 4: a task needing the current internal page fails honestly (no vacuous finish)", async () => {
+  it("CASE 4: a task needing the current internal page pauses honestly (no vacuous finish, no global error)", async () => {
     const { adapter, state } = fakeNewtabWeb();
     const bus = new AgentEventBus();
     const reasons: string[] = [];
-    bus.on("TASK_FAILED", ({ reason }) => reasons.push(reason));
+    bus.on("TASK_PAUSED", ({ reason }) => reasons.push(reason));
+    let failed = false;
+    bus.on("TASK_FAILED", () => {
+      failed = true;
+    });
     const controller = new AgentController(adapter, bus);
-    const failed = new Promise<void>((resolve) => bus.on("TASK_FAILED", () => resolve()));
-
-    await controller.run("click the button", 7);
-    await failed;
+    const paused = new Promise<void>((resolve) => bus.on("TASK_PAUSED", () => resolve()));
+    const runPromise = controller.run("click the button", 7);
+    await paused;
 
     expect(state.navigations).toHaveLength(0);
     expect(reasons[0]).toContain("does not expose webpage controls");
-    expect(controller.status.runtime).toBe("FAILED");
+    expect(controller.status.runtime).toBe("PAUSED");
+    expect(failed).toBe(false);
+    controller.stop();
+    await runPromise;
   });
 
   it("a Groq-like finish on chrome://newtab/ steers to the task destination instead of failing", async () => {
@@ -564,36 +644,50 @@ describe("AgentController on browser-internal pages", () => {  it("CASE 1/2/5: n
     };
     const bus = new AgentEventBus();
     const reasons: string[] = [];
-    bus.on("TASK_FAILED", ({ reason }) => reasons.push(reason));
+    bus.on("TASK_PAUSED", ({ reason }) => reasons.push(reason));
+    let failed = false;
+    bus.on("TASK_FAILED", () => {
+      failed = true;
+    });
     const planner = async () => ({
       action: { action: "navigate", url: "chrome://settings/" } as import("@/shared/action-schema").AgentAction,
       justification: "test",
     });
     const controller = new AgentController(adapter, bus, planner as never);
-    const failed = new Promise<void>((resolve) => bus.on("TASK_FAILED", () => resolve()));
+    const paused = new Promise<void>((resolve) => bus.on("TASK_PAUSED", () => resolve()));
     const t0 = Date.now();
 
-    await controller.run("search youtube tutorial", 7);
-    await failed;
+    const runPromise = controller.run("search youtube tutorial", 7);
+    await paused;
 
     expect(Date.now() - t0).toBeLessThan(10000);
     expect(reasons[0]).toContain("cannot be controlled");
-    expect(controller.status.runtime).toBe("FAILED");
+    expect(controller.status.runtime).toBe("PAUSED");
+    expect(failed).toBe(false);
+    controller.stop();
+    await runPromise;
   }, 30000);
 
-  it("a dead relay (__error envelope) fails honestly as extension-not-detected", async () => {    const { adapter } = fakeNewtabWeb();
+  it("a dead relay (__error envelope) pauses honestly as extension-not-detected (no global error)", async () => {    const { adapter } = fakeNewtabWeb();
     adapter.sendToTabAndRespond = async () => ({ __error: "Could not establish connection" });
     const bus = new AgentEventBus();
     const reasons: string[] = [];
-    bus.on("TASK_FAILED", ({ reason }) => reasons.push(reason));
+    bus.on("TASK_PAUSED", ({ reason }) => reasons.push(reason));
+    let failed = false;
+    bus.on("TASK_FAILED", () => {
+      failed = true;
+    });
     const controller = new AgentController(adapter, bus);
-    const failed = new Promise<void>((resolve) => bus.on("TASK_FAILED", () => resolve()));
+    const paused = new Promise<void>((resolve) => bus.on("TASK_PAUSED", () => resolve()));
 
-    await controller.run("search youtube tutorial", 7);
-    await failed;
+    const runPromise = controller.run("search youtube tutorial", 7);
+    await paused;
 
     expect(reasons[0]).toContain("not detected");
-    expect(controller.status.runtime).toBe("FAILED");
+    expect(controller.status.runtime).toBe("PAUSED");
+    expect(failed).toBe(false);
+    controller.stop();
+    await runPromise;
   });
 
   it("rejects an observation from the wrong tab, re-syncs, and continues", async () => {    const web = fakeWeb();

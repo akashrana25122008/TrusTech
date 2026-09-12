@@ -34,8 +34,38 @@ describe("landing-view neutrality", () => {
     });
   });
 
+  it("drawer reports PAUSED with the pause reason (never a global error)", () => {
+    expect(finalStateSummary("PAUSED", "Search submitted but results never appeared.")).toEqual({
+      label: "PAUSED",
+      detail: "Search submitted but results never appeared.",
+    });
+  });
+
+  it("execution-complete is not objective-complete: drawer waits for manual verification", () => {
+    expect(finalStateSummary("AWAITING_VERIFY", "Opened beginner C tutorial on YouTube")).toEqual({
+      label: "AWAITING VERIFICATION",
+      detail: "Opened beginner C tutorial on YouTube",
+    });
+    expect(finalStateSummary("VERIFIED", "Opened beginner C tutorial on YouTube")).toEqual({
+      label: "COMPLETED",
+      detail: "Opened beginner C tutorial on YouTube",
+    });
+    expect(finalStateSummary("VERIFY_FAILED", "No video opened.")).toEqual({
+      label: "NOT VERIFIED",
+      detail: "No video opened.",
+    });
+  });
+
+  it("main view asks for verification instead of claiming success", () => {
+    expect(displayActionText("AWAITING_VERIFY", "anything")).toBe(
+      "Execution complete — please verify the result on the page.",
+    );
+    expect(displayActionText("VERIFIED", "anything")).toBe("Objective verified.");
+    expect(displayActionText("VERIFY_FAILED", "anything")).toBe("Objective not met.");
+  });
+
   it("drawer has no final-state block while running", () => {
-    for (const s of ["IDLE", "OBSERVING", "THINKING", "ACTING", "WAITING", "PAUSED"] as const) {
+    for (const s of ["IDLE", "OBSERVING", "THINKING", "ACTING", "WAITING"] as const) {
       expect(finalStateSummary(s, "Working…")).toBeNull();
     }
   });

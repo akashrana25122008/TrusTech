@@ -712,6 +712,12 @@ describe("controller trust enforcement", () => {
       elements: [el("el_1", "button", "Claim"), el("el_2", "dialog", "Popup")],
     });
     const bus = new AgentEventBus();
+    const pauses: string[] = [];
+    let failed = false;
+    bus.on("TASK_PAUSED", (p) => pauses.push(p.reason));
+    bus.on("TASK_FAILED", () => {
+      failed = true;
+    });
     const controller = new AgentController(
       world.adapter,
       bus,
@@ -722,9 +728,17 @@ describe("controller trust enforcement", () => {
         { action: { action: "click", target: { elementId: "el_1" } }, justification: "t" },
       ]),
     );
-    await controller.run("Search shoes", 7);
-    // Bounded recovery exhausts on repeated PAUSE instead of executing.
+    const parked = new Promise<void>((resolve) => bus.on("TASK_PAUSED", () => resolve()));
+    const runPromise = controller.run("Search shoes", 7);
+    await parked;
+    // Bounded recovery exhausts on repeated PAUSE instead of executing —
+    // parked as PAUSED, never a global error.
     expect(world.executes).toHaveLength(0);
+    expect(pauses.length).toBeGreaterThan(0);
+    expect(failed).toBe(false);
+    expect(controller.status.runtime).toBe("PAUSED");
+    controller.stop();
+    await runPromise;
   }, 30000);
 });
 

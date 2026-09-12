@@ -10,7 +10,10 @@ export type AgentStateKey =
   | "SUCCESS"
   | "WAITING"
   | "PAUSED"
-  | "ERROR";
+  | "ERROR"
+  | "AWAITING_VERIFY"
+  | "VERIFIED"
+  | "VERIFY_FAILED";
 
 export type StepStatus =
   | "pending"
@@ -97,11 +100,44 @@ export interface AgentState {
   data?: TaskData | null;
 }
 
+/**
+ * Structured payload for machine-readable log entries. The human-readable
+ * `text` remains the source of truth for display; `event` lets dashboard
+ * components (execution timeline, verification panel) render structured
+ * rows without parsing prose. All fields optional — simulator and legacy
+ * paths emit text-only entries, which render as plain log lines.
+ */
+export interface AgentLogEvent {
+  kind:
+    | "task-start"
+    | "action-start"
+    | "action-ok"
+    | "action-fail"
+    | "verify-ok"
+    | "verify-fail"
+    | "recovery"
+    | "paused"
+    | "task-done"
+    | "verified";
+  /** Human-readable action label, e.g. "click → Search". Value-free. */
+  spec?: string;
+  taskId?: string;
+  actionId?: string;
+  stepId?: string;
+  error?: string;
+  details?: string;
+  evidence?: string[];
+  attempt?: number;
+  strategy?: string;
+  ok?: boolean;
+}
+
 export interface AgentLogEntry {
   id: string;
   at: number;
   level: "info" | "action" | "risk" | "success" | "error";
   text: string;
+  event?: AgentLogEvent;
 }
 
 export const INITIAL_TELEMETRY: Telemetry = {

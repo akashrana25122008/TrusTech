@@ -85,10 +85,11 @@ function fakeYouTube() {
           state.query = act.text ?? "";
           return { type: "CTX_EXECUTE_RESULT", payload: { ok: true, hint: { value: act.text } } satisfies ActionResult };
         }
-        if (act.action === "press_key") {
+        if (act.action === "search") {
+          state.query = act.text ?? state.query;
           state.url = YT_RESULTS;
           state.page = "results";
-          return { type: "CTX_EXECUTE_RESULT", payload: { ok: true } satisfies ActionResult };
+          return { type: "CTX_EXECUTE_RESULT", payload: { ok: true, hint: { value: state.query } } satisfies ActionResult };
         }
         if (act.action === "click") {
           state.url = YT_WATCH;
@@ -172,7 +173,7 @@ describe("YouTube workflow through the real loop (deterministic fallback)", () =
 
     expect(state.url).toBe(YT_WATCH);
     expect(state.query).toBe("Python compiler");
-    expect(succeeded).toEqual(["navigate", "type", "press_key", "click", "finish"]);
+    expect(succeeded).toEqual(["navigate", "type", "search", "click", "finish"]);
     expect(await completed).not.toMatch(/^FAILED/);
     expect(controller.status.runtime).toBe("COMPLETED");
   }, 30000);
