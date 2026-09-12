@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import type { ExtensionMessage, AgentStateKey } from "@/shared/types";
+import type { ExtensionMessage, AgentStateKey, HighlightKind, InjectActionCommand } from "@/shared/types";
 
 /* ------------------------------------------------------------------ *
  * Bridge between the panel and the extension runtime.
@@ -12,7 +12,7 @@ const runtime: any =
   null;
 
 /** Broadcast to the agent's active tab via the background service worker. */
-export function sendToBackground(message: ExtensionMessage) {
+function sendToBackground(message: ExtensionMessage) {
   try {
     runtime?.sendMessage(message);
   } catch {
@@ -39,7 +39,7 @@ export function useAgentBridge() {
   );
 
   const highlight = useCallback(
-    (kind: any, label: string, selector?: string) => {
+    (kind: HighlightKind, label: string, selector?: string) => {
       sendToBackground({ type: "AGENT_HIGHLIGHT", payload: { kind, label, selector } });
     },
     [],
@@ -47,21 +47,18 @@ export function useAgentBridge() {
 
   const beam = useCallback(
     (on: boolean, selector?: string) => {
+      clearTimers();
+      sendToBackground({ type: "AGENT_BEAM", payload: { on, selector } });
       if (on) {
-        sendToBackground({ type: "AGENT_BEAM", payload: { on, selector } });
-        if (timer.current) clearTimeout(timer.current);
         timer.current = window.setTimeout(() => {
           sendToBackground({ type: "AGENT_BEAM", payload: { on: false } });
         }, 1400);
-      } else {
-        if (timer.current) clearTimeout(timer.current);
-        sendToBackground({ type: "AGENT_BEAM", payload: { on: false } });
       }
     },
     [clearTimers],
   );
 
-  const command = useCallback((cmd: any, selector?: string, value?: string) => {
+  const command = useCallback((cmd: InjectActionCommand, selector?: string, value?: string) => {
     sendToBackground({ type: "BROWSER_COMMAND", payload: { command: cmd, selector, value } });
   }, []);
 

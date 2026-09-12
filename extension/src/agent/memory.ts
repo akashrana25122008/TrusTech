@@ -55,10 +55,6 @@ export class TaskMemory {
     this.entries.push(entry);
   }
 
-  last(n = 1): MemoryEntry[] {
-    return this.entries.slice(-n);
-  }
-
   all(): readonly MemoryEntry[] {
     return this.entries;
   }

@@ -4,7 +4,6 @@
  * ------------------------------------------------------------------ */
 
 import type { BrowserAdapter } from "@/browser";
-import type { TabInfo } from "@/shared/runtime";
 
 export interface AgentTabContext {
   tabId: number;
@@ -83,10 +82,4 @@ export class TabManager {
   byId(tabId: number): AgentTabContext | undefined {
     return this.tabs.get(tabId);
   }
-
-  contexts(): AgentTabContext[] {
-    return Array.from(this.tabs.values());
-  }
 }
-
-export type { TabInfo };

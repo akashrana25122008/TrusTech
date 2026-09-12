@@ -53,12 +53,13 @@ export interface TaskData {
   interpretation?: string;
 }
 
-export type RiskLevel = "low" | "medium" | "high";
-
 export interface RiskGateInfo {
   label: string;
   reasons: string[];
-  level: RiskLevel;
+  // Legacy 3-level UI risk scale (the runtime engine in agent/risk-manager
+  // uses its own LOW/MEDIUM/HIGH/CRITICAL scale; this alias had no other
+  // consumers, so it is inlined rather than kept as a duplicate type).
+  level: "low" | "medium" | "high";
   /** Canonical action instance awaiting approval (bound confirmation). */
   actionId?: string;
   /** Value-free label: action name + target label. */

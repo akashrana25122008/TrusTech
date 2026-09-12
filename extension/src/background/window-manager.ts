@@ -23,8 +23,4 @@ export class WindowManager {
   async close(tabId: number): Promise<void> {
     await this.adapter.closeTab(tabId);
   }
-
-  async list(): Promise<TabInfo[]> {
-    return this.adapter.listTabs();
-  }
 }

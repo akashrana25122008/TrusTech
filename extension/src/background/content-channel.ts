@@ -44,11 +44,6 @@ export class ContentChannel {
     return this.ready.has(tabId);
   }
 
-  /** Remove the ready tab if it matches (used by external invalidation). */
-  removeIfmatches(tabId: number): void {
-    this.ready.delete(tabId);
-  }
-
   /**
    * Ensure a content script is reachable on `tabId`.
    *
