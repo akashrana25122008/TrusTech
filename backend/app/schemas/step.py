@@ -18,13 +18,6 @@ from backend.app.services.tools import TOOL_NAMES, TOOLS
 
 _ELEMENT_ID = re.compile(r"^el_[0-9]+$")
 
-
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-
-from backend.app.services.tools import TOOL_NAMES, TOOLS
-
-_ELEMENT_ID = re.compile(r"^el_[0-9]+$")
-
 # Element descriptors may only carry these keys. Raw values, screenshots,
 # selectors-with-content and any other smuggled fields are rejected (422)
 # — defense in depth behind the local firewall.

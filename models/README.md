@@ -25,11 +25,11 @@ models/
 ## Loading rules
 
 1. The worker never statically imports a model.
-2. `vision/providers.ts` detects capabilities (WebGPU → WASM → CPU) before
-   fetching weights; weights stream from a mutable model store (CDN or local
-   `chrome.runtime.getURL`) only after a provider is first needed.
-3. Fail loudly, never fake: `ready() === false` means "not loaded", and
-   `PaddleOcrProvider.recognize()` returns `""` until the runtime is present.
+2. A future vision provider will detect capabilities (WebGPU → WASM → CPU)
+   before fetching weights; weights stream from a mutable model store (CDN
+   or local `chrome.runtime.getURL`) only after a provider is first needed.
+3. Fail loudly, never fake: `ready() === false` means "not loaded" — no
+   neural output may be simulated.
 4. PII and redaction stay in the extension tier; OCR output is scanned by the
    Privacy Firewall before it can reach the backend.
 
