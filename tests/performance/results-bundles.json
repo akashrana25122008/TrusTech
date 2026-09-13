@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-09-13T14:55:18.524Z",
+  "budget": "performance-budget.json",
+  "chunks": [
+    {
+      "file": "js/panel.js",
+      "bytes": 377466,
+      "gzip": 118164
+    },
+    {
+      "file": "js/RobotStage-ZJ8iTq5C.js",
+      "bytes": 500091,
+      "gzip": 127026
+    },
+    {
+      "file": "js/background.js",
+      "bytes": 11555,
+      "gzip": 3630
+    },
+    {
+      "file": "js/content.js",
+      "bytes": 51802,
+      "gzip": 17869
+    },
+    {
+      "file": "assets/vision.worker-CCha1sM9.js",
+      "bytes": 6894,
+      "gzip": 3164
+    },
+    {
+      "file": "assets/transformers.web-CtTSpYFS.js",
+      "bytes": 899013,
+      "gzip": 233168
+    },
+    {
+      "file": "assets/panel-Be30D1LV.css",
+      "bytes": 49220,
+      "gzip": 9714
+    }
+  ],
+  "checks": {
+    "panelWithinBudget": true,
+    "robotWithinBudget": true,
+    "threeInPanel": false,
+    "threeInRobotChunk": true,
+    "modelRuntimeInPanel": false,
+    "panelReferencesRobotChunk": true
+  },
+  "pass": true,
+  "panelFile": "panel.js"
+}

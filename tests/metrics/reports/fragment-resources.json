@@ -1,0 +1,80 @@
+{
+  "name": "resources",
+  "recordedAt": "2026-09-13T14:56:25.873Z",
+  "data": {
+    "methodology": {
+      "memory": "process.memoryUsage().rss sampled around the workload in-process; GC timing can shift numbers between runs",
+      "cpu": {
+        "status": "NOT_MEASURED",
+        "reason": "no reliable CPU API in this runtime"
+      },
+      "network": "payload bytes measured by encoding; request counts observed on mock transports in transmission tests"
+    },
+    "memory": {
+      "baselineRssMb": 77.02,
+      "peakRssMb": 159.31,
+      "finalRssMb": 159.31,
+      "peakDeltaMb": 82.3,
+      "unit": "MB"
+    },
+    "payloads": {
+      "fixturePngBytes": [
+        {
+          "file": "aadhaar-form.png",
+          "bytes": 3203
+        },
+        {
+          "file": "bank-ifsc.png",
+          "bytes": 2843
+        },
+        {
+          "file": "card-checkout.png",
+          "bytes": 3326
+        },
+        {
+          "file": "contact.png",
+          "bytes": 2633
+        },
+        {
+          "file": "gov-ids.png",
+          "bytes": 3025
+        },
+        {
+          "file": "masked-clean.png",
+          "bytes": 3527
+        },
+        {
+          "file": "pan-tax.png",
+          "bytes": 3137
+        },
+        {
+          "file": "photo-negative.png",
+          "bytes": 677543
+        },
+        {
+          "file": "pwd-login.png",
+          "bytes": 3522
+        }
+      ],
+      "sanitizedPngBytes": [
+        {
+          "label": "sanitized-640x480-1regions",
+          "bytes": 1229438
+        },
+        {
+          "label": "sanitized-640x480-6regions",
+          "bytes": 1229438
+        },
+        {
+          "label": "sanitized-640x480-24regions",
+          "bytes": 1229438
+        }
+      ],
+      "rawPngEncoderBytes": 12404
+    },
+    "requests": {
+      "sanitizedTransmissionsObserved": 3,
+      "note": "AT-04/AT-07 assert 1 request per allowed transmission; AT-03/AT-05 assert 0 on block"
+    }
+  }
+}

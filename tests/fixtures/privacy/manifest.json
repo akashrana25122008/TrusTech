@@ -1,0 +1,221 @@
+{
+  "viewport": {
+    "width": 640,
+    "height": 480
+  },
+  "fixtures": [
+    {
+      "id": "pwd-login",
+      "image": "pwd-login.png",
+      "viewport": {
+        "width": 640,
+        "height": 480
+      },
+      "groundTruth": [
+        "PASSWORD"
+      ],
+      "negatives": 2,
+      "maskedOnly": false
+    },
+    {
+      "id": "aadhaar-form",
+      "image": "aadhaar-form.png",
+      "viewport": {
+        "width": 640,
+        "height": 480
+      },
+      "groundTruth": [
+        "AADHAAR"
+      ],
+      "negatives": 2,
+      "maskedOnly": false
+    },
+    {
+      "id": "pan-tax",
+      "image": "pan-tax.png",
+      "viewport": {
+        "width": 640,
+        "height": 480
+      },
+      "groundTruth": [
+        "PAN"
+      ],
+      "negatives": 2,
+      "maskedOnly": false
+    },
+    {
+      "id": "card-checkout",
+      "image": "card-checkout.png",
+      "viewport": {
+        "width": 640,
+        "height": 480
+      },
+      "groundTruth": [
+        "CARD_NUMBER",
+        "EMAIL"
+      ],
+      "negatives": 3,
+      "maskedOnly": false
+    },
+    {
+      "id": "contact",
+      "image": "contact.png",
+      "viewport": {
+        "width": 640,
+        "height": 480
+      },
+      "groundTruth": [
+        "PHONE",
+        "EMAIL",
+        "UPI"
+      ],
+      "negatives": 0,
+      "maskedOnly": false
+    },
+    {
+      "id": "bank-ifsc",
+      "image": "bank-ifsc.png",
+      "viewport": {
+        "width": 640,
+        "height": 480
+      },
+      "groundTruth": [
+        "IFSC"
+      ],
+      "negatives": 2,
+      "maskedOnly": false
+    },
+    {
+      "id": "gov-ids",
+      "image": "gov-ids.png",
+      "viewport": {
+        "width": 640,
+        "height": 480
+      },
+      "groundTruth": [
+        "PASSPORT",
+        "VOTER_ID",
+        "DRIVING_LICENSE"
+      ],
+      "negatives": 2,
+      "maskedOnly": false
+    },
+    {
+      "id": "masked-clean",
+      "image": "masked-clean.png",
+      "viewport": {
+        "width": 640,
+        "height": 480
+      },
+      "groundTruth": [
+        "PASSWORD"
+      ],
+      "negatives": 0,
+      "maskedOnly": true
+    },
+    {
+      "id": "photo-negative",
+      "image": "photo-negative.png",
+      "viewport": {
+        "width": 640,
+        "height": 480
+      },
+      "groundTruth": [],
+      "negatives": 0,
+      "maskedOnly": false
+    }
+  ],
+  "classCoverage": {
+    "FACE": {
+      "status": "not-tested",
+      "fixtures": [],
+      "reason": "no human-subject photo in corpus; synthetic face would game YOLOS"
+    },
+    "PASSWORD": {
+      "status": "positive",
+      "fixtures": [
+        "pwd-login",
+        "masked-clean"
+      ]
+    },
+    "CARD_NUMBER": {
+      "status": "positive",
+      "fixtures": [
+        "card-checkout"
+      ]
+    },
+    "AADHAAR": {
+      "status": "positive",
+      "fixtures": [
+        "aadhaar-form"
+      ]
+    },
+    "PAN": {
+      "status": "positive",
+      "fixtures": [
+        "pan-tax"
+      ]
+    },
+    "UPI": {
+      "status": "positive",
+      "fixtures": [
+        "contact"
+      ]
+    },
+    "PHONE": {
+      "status": "positive",
+      "fixtures": [
+        "contact"
+      ]
+    },
+    "EMAIL": {
+      "status": "positive",
+      "fixtures": [
+        "card-checkout",
+        "contact"
+      ]
+    },
+    "IFSC": {
+      "status": "positive",
+      "fixtures": [
+        "bank-ifsc"
+      ]
+    },
+    "PASSPORT": {
+      "status": "positive",
+      "fixtures": [
+        "gov-ids"
+      ]
+    },
+    "VOTER_ID": {
+      "status": "positive",
+      "fixtures": [
+        "gov-ids"
+      ]
+    },
+    "DRIVING_LICENSE": {
+      "status": "positive",
+      "fixtures": [
+        "gov-ids"
+      ]
+    },
+    "SSN": {
+      "status": "negative-only",
+      "fixtures": [],
+      "reason": "no SSN in Indian product scope; negative fixtures only"
+    }
+  },
+  "notes": [
+    "pwd-login: no label-for; cue comes from aria-label 'Your password' → structural boost 0.96",
+    "aadhaar-form: Verhoeff-valid Aadhaar; label-for cue via <label for>. Power-of-the-rules: 6-digit run without a cue → no region.",
+    "pan-tax: no notes",
+    "card-checkout: no notes",
+    "contact: three independent PII values inside ONE text leaf → three regions, no conflict (text never conflicts with text).",
+    "bank-ifsc: no notes",
+    "gov-ids: no notes",
+    "masked-clean: masked card/aadhaar/phone must NOT be detected without OCR — documented limitation, asserted as zero false positives here. 'Visa ending' intentionally has no card-pattern digits.",
+    "photo-negative: real photo (two cats) + clean DOM → must yield NO FACE (no person in frame) and no text PII. Honest real-model negative.",
+    "masked values (XXXX-style) are NOT detectable without OCR — asserted as zero false positives (documented limitation).",
+    "ocr end-to-end NOT TESTED (no runtime bundled) — seam + scripted-provider unit tests only."
+  ]
+}

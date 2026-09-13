@@ -8,6 +8,12 @@
  * gate fails closed on every image payload; the painter is tested and
  * ready for the future sanctioned sender.
  *
+ * Phase 3: the canonical pixel pipeline lives in redaction-* +
+ * sanitized-image.ts (SensitiveRegion-driven, verified, manifested).
+ * This module is PRESERVED as the legacy canvas-context painter and
+ * the shared image-payload recognizer used by the text firewall, the
+ * background message router guard, and the transmission audit.
+ *
  * Redaction never touches the live page — it paints a fresh canvas.
  * ------------------------------------------------------------------ */
 
@@ -19,6 +25,42 @@ export interface RedactionBox {
 }
 
 export type RedactionMethod = "blackout";
+
+/** Canonical Phase 3 method names use the uppercase union in
+ *  redaction-policy.ts (BLACKOUT | BLUR | MASK). This legacy lowercase
+ *  alias stays for the canvas-context painter's backward compatibility. */
+export type LegacyRedactionMethod = RedactionMethod;
+
+/** Bounded deep scan for image payloads inside message-sized objects.
+ *  Used by the background router guard: any extension message carrying
+ *  probable image bytes is dropped before relay. Caps keep the scan
+ *  cheap and prevent pathological inputs from stalling the worker. */
+export function containsImagePayload(value: unknown, depth = 0, seen?: Set<unknown>): boolean {
+  if (value === null || value === undefined) return false;
+  if (isProbableImagePayload(value)) return true;
+  if (depth >= 6 || typeof value !== "object") return false;
+  const bag = seen ?? new Set<unknown>();
+  if (bag.has(value)) return false;
+  bag.add(value);
+  if (bag.size > 500) return false;
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length && i < 200; i++) {
+      if (containsImagePayload(value[i], depth + 1, bag)) return true;
+    }
+    return false;
+  }
+  if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) {
+    return false; // class instances (bitmaps handled above) are opaque
+  }
+  let n = 0;
+  for (const key of Object.keys(value)) {
+    if (++n > 200) break;
+    const record = value as Record<string, unknown>;
+    if (isImageFieldName(key) && typeof record[key] === "string" && (record[key] as string).length > 0) return true;
+    if (containsImagePayload(record[key], depth + 1, bag)) return true;
+  }
+  return false;
+}
 
 /** Minimal 2D-context surface the painter needs (mockable in tests). */
 export interface PaintContext {

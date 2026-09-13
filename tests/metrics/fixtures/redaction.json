@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "notes": [
+    "Region-level redaction fixtures. Each scene is painted synthetically in-test (no photo GT needed): sensitive boxes in one color, keep boxes in another.",
+    "Regions carry a canonical type + confidence 0.9 and flow through the real planner + renderer + verifier.",
+    "Correct redaction: an applied op covers >=95% of a GT box area (coverage).",
+    "Recall: GT boxes with coverage >= 0.95 divided by all GT boxes.",
+    "Precision: applied ops covering >= 95% of at least one GT box, divided by all applied ops. Overlap merging is legitimate (security wins), so IoU is the wrong precision rule here: a merged union correctly covers several boxes at once.",
+    "Over-redaction bound: applied op area <= 3x the union area of the GT boxes it covers. Padding is intentional; the bound catches runaway boxes while tolerating legitimate merges.",
+    "All values are synthetic."
+  ],
+  "scenes": [
+    {
+      "id": "red-01",
+      "kind": "single password field plus button",
+      "size": { "w": 320, "h": 200 },
+      "sensitive": [{ "type": "PASSWORD", "bbox": { "x": 40, "y": 60, "w": 200, "h": 36 } }],
+      "keep": [{ "x": 40, "y": 120, "w": 120, "h": 32 }, { "x": 40, "y": 24, "w": 160, "h": 10 }]
+    },
+    {
+      "id": "red-02",
+      "kind": "card number plus merchant context",
+      "size": { "w": 320, "h": 200 },
+      "sensitive": [{ "type": "CARD_NUMBER", "bbox": { "x": 40, "y": 40, "w": 220, "h": 32 } }],
+      "keep": [{ "x": 40, "y": 12, "w": 140, "h": 10 }, { "x": 40, "y": 88, "w": 80, "h": 10 }, { "x": 40, "y": 140, "w": 140, "h": 32 }]
+    },
+    {
+      "id": "red-03",
+      "kind": "three types sharing one paragraph box",
+      "size": { "w": 640, "h": 200 },
+      "sensitive": [
+        { "type": "PHONE", "bbox": { "x": 48, "y": 48, "w": 540, "h": 26 } },
+        { "type": "EMAIL", "bbox": { "x": 48, "y": 48, "w": 540, "h": 26 } },
+        { "type": "UPI", "bbox": { "x": 48, "y": 48, "w": 540, "h": 26 } }
+      ],
+      "keep": [{ "x": 48, "y": 120, "w": 200, "h": 20 }]
+    },
+    {
+      "id": "red-04",
+      "kind": "overlapping face and email boxes",
+      "size": { "w": 640, "h": 480 },
+      "sensitive": [
+        { "type": "FACE", "bbox": { "x": 100, "y": 100, "w": 80, "h": 80 } },
+        { "type": "EMAIL", "bbox": { "x": 120, "y": 120, "w": 200, "h": 30 } }
+      ],
+      "keep": [{ "x": 400, "y": 300, "w": 120, "h": 40 }]
+    },
+    {
+      "id": "red-05",
+      "kind": "clean scene, nothing sensitive",
+      "size": { "w": 320, "h": 200 },
+      "sensitive": [],
+      "keep": [{ "x": 40, "y": 40, "w": 200, "h": 30 }]
+    },
+    {
+      "id": "red-06",
+      "kind": "tiny sensitive box",
+      "size": { "w": 320, "h": 200 },
+      "sensitive": [{ "type": "PHONE", "bbox": { "x": 100, "y": 80, "w": 60, "h": 20 } }],
+      "keep": [{ "x": 100, "y": 130, "w": 100, "h": 20 }]
+    },
+    {
+      "id": "red-07",
+      "kind": "government id row",
+      "size": { "w": 640, "h": 480 },
+      "sensitive": [
+        { "type": "AADHAAR", "bbox": { "x": 48, "y": 92, "w": 360, "h": 44 } },
+        { "type": "PAN", "bbox": { "x": 48, "y": 160, "w": 200, "h": 44 } }
+      ],
+      "keep": [{ "x": 48, "y": 240, "w": 160, "h": 40 }]
+    }
+  ]
+}

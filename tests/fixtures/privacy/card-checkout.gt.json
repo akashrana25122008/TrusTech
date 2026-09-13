@@ -1,0 +1,37 @@
+{
+  "id": "card-checkout",
+  "viewport": {
+    "width": 640,
+    "height": 480
+  },
+  "image": "card-checkout.png",
+  "grounds": [
+    {
+      "type": "CARD_NUMBER",
+      "bbox": {
+        "x": 48,
+        "y": 92,
+        "width": 360,
+        "height": 44
+      },
+      "minIoU": 0.4
+    },
+    {
+      "type": "EMAIL",
+      "bbox": {
+        "x": 48,
+        "y": 156,
+        "width": 360,
+        "height": 44
+      },
+      "minIoU": 0.4
+    }
+  ],
+  "negatives": [
+    "expiry 09/29",
+    "CVV 123 (3 digits)",
+    "total"
+  ],
+  "masked": [],
+  "notes": ""
+}

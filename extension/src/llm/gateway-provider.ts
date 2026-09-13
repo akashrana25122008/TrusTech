@@ -21,6 +21,13 @@ import type { TaskData, TaskStep } from "@/shared/types";
 export interface GatewayProviderOptions {
   /** Backend base URL, e.g. "http://localhost:8000". */
   baseUrl?: string;
+  /**
+   * Optional bearer token for the local/backend gateway when it runs with
+   * TRUSTECH_GATEWAY_TOKEN set. Extension-owned configuration (not
+   * page-derived); attached to the outbound request AFTER the privacy
+   * firewall authorizes the transmission. Never loaded from page data.
+   */
+  authToken?: string;
   /** Injectable fetch for testing and mocking. */
   fetchFn?: typeof fetch;
   /**
@@ -65,7 +72,8 @@ export interface BackendStepPayload {
 
 export class GatewayLlmProvider implements LlmProvider {
   readonly name = "groq-gateway";
-  private readonly baseUrl: string;
+  private baseUrl: string;
+  private authToken: string | undefined;
   private readonly fetchFn: typeof fetch;
   private readonly timeoutMs: number;
   private readonly healthTimeoutMs: number;
@@ -73,10 +81,27 @@ export class GatewayLlmProvider implements LlmProvider {
 
   constructor(options: GatewayProviderOptions = {}) {
     this.baseUrl = (options.baseUrl ?? "http://localhost:8000").replace(/\/+$/, "");
+    this.authToken = options.authToken || undefined;
     this.fetchFn = options.fetchFn ?? ((...args) => globalThis.fetch(...args));
     this.timeoutMs = options.timeoutMs ?? 60000;
     this.healthTimeoutMs = options.healthTimeoutMs ?? 2000;
     this.firewall = options.firewall === null ? null : (options.firewall ?? new TransmissionFirewall());
+  }
+
+  /**
+   * Adopt runtime gateway configuration (base URL / bearer token) after
+   * construction — used when the UI/options page reads saved settings from
+   * chrome.storage. Never throws; unknown values silently keep defaults.
+   */
+  configure(options: { baseUrl?: string; authToken?: string }): void {
+    if (typeof options.baseUrl === "string" && options.baseUrl.trim()) {
+      this.baseUrl = options.baseUrl.trim().replace(/\/+$/, "");
+    }
+    if (options.authToken === null || typeof options.authToken === "undefined") {
+      this.authToken = undefined;
+    } else if (typeof options.authToken === "string") {
+      this.authToken = options.authToken.trim() || undefined;
+    }
   }
 
   /** Classified outcome of the most recent health probe (never throws). */
@@ -209,6 +234,15 @@ export class GatewayLlmProvider implements LlmProvider {
       outBody = auth.request.body;
       outHeaders = auth.request.headers;
       outUrl = auth.request.url;
+    }
+
+    // Gateway bearer token (extension-owned config, never page-derived):
+    // re-attached AFTER firewall authorization — the firewall's header
+    // allowlist drops every header but content-type/accept, and would
+    // BLOCK (not sanitize) an Authorization header it saw. The token is
+    // not page data, so it is out of scope for the boundary.
+    if (this.authToken) {
+      outHeaders["Authorization"] = `Bearer ${this.authToken}`;
     }
 
     let response: Response;

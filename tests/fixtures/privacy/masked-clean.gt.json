@@ -1,0 +1,27 @@
+{
+  "id": "masked-clean",
+  "viewport": {
+    "width": 640,
+    "height": 480
+  },
+  "image": "masked-clean.png",
+  "grounds": [
+    {
+      "type": "PASSWORD",
+      "bbox": {
+        "x": 48,
+        "y": 164,
+        "width": 360,
+        "height": 44
+      },
+      "minIoU": 0.4
+    }
+  ],
+  "negatives": [],
+  "masked": [
+    "XXXX XXXX 1234",
+    "XXXXXXXX4321",
+    "98XX XXX210"
+  ],
+  "notes": "masked card/aadhaar/phone must NOT be detected without OCR — documented limitation, asserted as zero false positives here. 'Visa ending' intentionally has no card-pattern digits."
+}

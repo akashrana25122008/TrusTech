@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { INITIAL_STATE, type AgentLogEntry, type AgentState, type AgentStateKey, type HighlightKind, type TaskStep } from "@/shared/types";
+import { rawApi } from "@/shared/runtime";
 import { RUNTIME_TO_UI_STATUS, type AgentRuntimeStatus } from "@/agent/state-manager";
 import { AgentEventBus } from "@/shared/event-bus";
 import { AgentController } from "@/agent/controller";
+import { buildVisualPlanner, createVisualPlannerDeps } from "@/agent/visual-planner";
 import { GatewayLlmProvider } from "@/llm/gateway-provider";
 import { buildLlmPlanner } from "@/agent/llm-planner";
 import { ChromeStorageBackend, VisualMemoryStore } from "@/agent/memory-store";
@@ -42,6 +44,56 @@ const planner = buildLlmPlanner(gatewayProvider);
 // available, silent in-memory fallback otherwise. Never blocks tasks.
 const memoryStore = new VisualMemoryStore(new ChromeStorageBackend());
 const controller = new AgentController(transport, bus, planner, memoryStore);
+
+const GATEWAY_URL_KEY = "trustech.gatewayUrl";
+const GATEWAY_TOKEN_KEY = "trustech.gatewayToken";
+const VISUAL_MODE_KEY = "trustech.visualMode";
+
+/**
+ * Adopt saved gateway settings (base URL + optional bearer token) from
+ * chrome.storage.local before any run. Extension-owned configuration —
+ * page data never reaches the gateway provider. Storage missing/unset →
+ * defaults (http://localhost:8000, no token). Never throws, never blocks.
+ */
+async function applyGatewaySettings(): Promise<void> {
+  try {
+    const storage = rawApi()?.storage?.local;
+    if (!storage || typeof storage.get !== "function") return;
+    const [urlRes, tokenRes] = await Promise.all([
+      storage.get(GATEWAY_URL_KEY),
+      storage.get(GATEWAY_TOKEN_KEY),
+    ]);
+    gatewayProvider.configure({
+      baseUrl: typeof urlRes?.[GATEWAY_URL_KEY] === "string" ? urlRes[GATEWAY_URL_KEY] : undefined,
+      authToken: typeof tokenRes?.[GATEWAY_TOKEN_KEY] === "string" ? tokenRes[GATEWAY_TOKEN_KEY] : undefined,
+    });
+  } catch {
+    /* storage unavailable in this context — keep constructor defaults */
+  }
+}
+
+// Fire-and-forget: configure the singleton before the first user run.
+void applyGatewaySettings();
+
+async function readVisualMode(): Promise<{ enabled: boolean; baseUrl?: string; authToken?: string }> {
+  try {
+    const storage = rawApi()?.storage?.local;
+    if (!storage || typeof storage.get !== "function") return { enabled: false };
+    const [flagRes, urlRes, tokenRes] = await Promise.all([
+      storage.get(VISUAL_MODE_KEY),
+      storage.get(GATEWAY_URL_KEY),
+      storage.get(GATEWAY_TOKEN_KEY),
+    ]);
+    if (flagRes?.[VISUAL_MODE_KEY] !== true) return { enabled: false };
+    return {
+      enabled: true,
+      baseUrl: typeof urlRes?.[GATEWAY_URL_KEY] === "string" ? urlRes[GATEWAY_URL_KEY] : undefined,
+      authToken: typeof tokenRes?.[GATEWAY_TOKEN_KEY] === "string" ? tokenRes[GATEWAY_TOKEN_KEY] : undefined,
+    };
+  } catch {
+    return { enabled: false };
+  }
+}
 
 const RUNTIME_LABEL: Partial<Record<AgentRuntimeStatus, string>> = {
   UNDERSTANDING: "Understanding the task…",
@@ -560,10 +612,44 @@ export function useAgentState(bridge?: Events) {
         pushState("THINKING", "Connecting to the browser…");
         void transport.queryActiveTab().then((tab) => {
           if (tab?.id != null) {
-            void controller.run(task, tab.id).catch(() => {
-              controllerActive.current = false;
-              setState((prev) => ({ ...prev, status: "ERROR", actionText: "Agent runtime failed to start." }));
-            });
+            void (async () => {
+              const previous = controller.getPlanner();
+              const visual = await readVisualMode();
+              if (visual.enabled) {
+                controller.setPlanner(
+                  buildVisualPlanner(
+                    previous,
+                    createVisualPlannerDeps(
+                      transport,
+                      {
+                        baseUrl: visual.baseUrl ?? "http://localhost:8000",
+                        authToken: visual.authToken,
+                      },
+                      {
+                        onEvent: (event) => bus.emit("VISUAL_GROUNDING", event),
+                      },
+                    ),
+                  ),
+                );
+                bus.emit("VISUAL_GROUNDING", {
+                  stage: "fallback",
+                  regions: 0,
+                  methods: [],
+                  detections: 0,
+                  transmitted: false,
+                  latencyMs: 0,
+                  reason: "visual mode enabled for this run",
+                });
+              }
+              try {
+                await controller.run(task, tab.id);
+              } catch {
+                controllerActive.current = false;
+                setState((prev) => ({ ...prev, status: "ERROR", actionText: "Agent runtime failed to start." }));
+              } finally {
+                controller.setPlanner(previous);
+              }
+            })();
           } else {
             controllerActive.current = false;
             setState((prev) => ({

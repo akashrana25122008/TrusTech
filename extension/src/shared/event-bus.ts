@@ -32,6 +32,15 @@ export interface AgentEventMap {
   OBSERVATION_STARTED: Record<string, never>;
   OBSERVATION_UPDATED: { snapshot: ObservationSnapshot; freshness: "live" | "stale" };
   PLAN_CREATED: { action: AgentAction };
+  VISUAL_GROUNDING: {
+    stage: "grounded" | "fallback";
+    regions: number;
+    methods: string[];
+    detections: number;
+    transmitted: boolean;
+    latencyMs: number;
+    reason?: string;
+  };
   /**
    * The task plan changed (first plan from the provider, or a re-plan that
    * replaced remaining steps). The UI mirrors `steps` verbatim — the

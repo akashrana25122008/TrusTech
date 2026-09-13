@@ -1,0 +1,222 @@
+{
+  "name": "pii",
+  "recordedAt": "2026-09-13T14:56:24.722Z",
+  "data": {
+    "spanIouThreshold": 0.5,
+    "corpus": {
+      "clearItems": 29,
+      "groups": [
+        "clear"
+      ]
+    },
+    "micro": {
+      "tp": 18,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "precisionPct": 100,
+      "recallPct": 100,
+      "f1Pct": 100
+    },
+    "perCategory": {
+      "aadhaar": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "credit_card": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 3,
+        "ci95": [
+          0.43849391955098227,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "driving_licence": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "email": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 2,
+        "ci95": [
+          0.34237195288961925,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "ifsc": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "ipv4": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "pan": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "passport": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "phone": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 3,
+        "ci95": [
+          0.43849391955098227,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "postal": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "ssn": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "upi": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "voter_id": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      }
+    },
+    "failures": []
+  }
+}

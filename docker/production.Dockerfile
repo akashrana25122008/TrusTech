@@ -4,9 +4,12 @@ WORKDIR /srv
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
+# The build pipeline needs the content-script config, the icons generator
+# and the verify script in addition to the app sources.
 COPY extension/ extension/
-COPY tsconfig.json vite.config.ts ./
+COPY tsconfig.json vite.config.ts vite.content.config.ts ./
 COPY build/ build/
+COPY tools/ tools/
 RUN npm run build
 
 FROM caddy:2.9-alpine AS caddy

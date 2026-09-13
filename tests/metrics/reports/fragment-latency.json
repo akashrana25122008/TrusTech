@@ -1,0 +1,76 @@
+{
+  "name": "latency",
+  "recordedAt": "2026-09-13T14:56:52.732Z",
+  "data": {
+    "definition": {
+      "e2e": "time from visual-planner call start to validated action (stub capture, real inference/sanitize/permit/verify/grounding, mock VLM transport)",
+      "warmup": "2 discarded iterations per stage",
+      "timers": "performance.now high-resolution"
+    },
+    "stages": {
+      "visionInference": {
+        "n": 5,
+        "min": 3141.850040999998,
+        "median": 3335.043917000001,
+        "p95": 3474.5890997999995,
+        "max": 3485.5253329999996,
+        "mean": 3324.4355249999994,
+        "failures": 0
+      },
+      "sanitization": {
+        "n": 15,
+        "min": 2.757583999999042,
+        "median": 5.1053330000031565,
+        "p95": 8.010729299999728,
+        "max": 9.531332999998995,
+        "mean": 5.133783333333365,
+        "failures": 0
+      },
+      "transmission": {
+        "n": 15,
+        "min": 82.12916699999914,
+        "median": 105.16045800000211,
+        "p95": 133.4607080000016,
+        "max": 139.1473330000008,
+        "mean": 107.29322780000099,
+        "failures": 0
+      },
+      "grounding": {
+        "n": 50,
+        "min": 0.13337499999761349,
+        "median": 0.17835399999967194,
+        "p95": 0.38373124999852726,
+        "max": 0.45670800000152667,
+        "mean": 0.20996407999984512,
+        "failures": 0
+      },
+      "execution": {
+        "n": 50,
+        "min": 0.12170899999910034,
+        "median": 0.13995799999975134,
+        "p95": 0.3595421499996518,
+        "max": 0.552084000002651,
+        "mean": 0.2020475599999918,
+        "failures": 0
+      },
+      "verification": {
+        "n": 15,
+        "min": 2.065582999999606,
+        "median": 3.124374999999418,
+        "p95": 4.379762400000252,
+        "max": 5.87195800000336,
+        "mean": 3.152638800000568,
+        "failures": 0
+      },
+      "e2e": {
+        "n": 10,
+        "min": 1.3979579999977432,
+        "median": 1.5354785000017728,
+        "p95": 1.682639400001426,
+        "max": 1.7043330000014976,
+        "mean": 1.554545599999983,
+        "failures": 0
+      }
+    }
+  }
+}

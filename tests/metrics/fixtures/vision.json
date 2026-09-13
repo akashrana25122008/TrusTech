@@ -1,0 +1,218 @@
+{
+  "version": 1,
+  "notes": [
+    "Deterministic grounding fixtures for the Phase 7 visual grounding layer.",
+    "Each proposal stands in for a VLM bbox (no live VLM key in CI); the measured code is the real normalization, mapping, hit-test, resolution and confidence path.",
+    "Coordinate convention: proposal bbox is in screenshot_pixels unless space says otherwise; element rects are viewport CSS pixels.",
+    "Expected matches compare element role+name, or exact rect for duplicate-name cases, or a grounding failure code.",
+    "vision-08 is intentionally destructive ('Delete item 2'): the correct measured outcome is CONFIRMATION_REQUIRED from the existing risk matrix, not execution."
+  ],
+  "fixtures": [
+    {
+      "id": "vision-01",
+      "kind": "navbar link",
+      "difficulty": "easy",
+      "viewport": { "w": 1280, "h": 800 },
+      "image": { "width": 1280, "height": 800 },
+      "elements": [
+        { "key": "e1", "role": "link", "name": "Home", "tag": "a", "rect": { "x": 24, "y": 16, "w": 60, "h": 24 } },
+        { "key": "e2", "role": "link", "name": "Docs", "tag": "a", "rect": { "x": 100, "y": 16, "w": 52, "h": 24 } }
+      ],
+      "overlay": null,
+      "proposal": { "bbox": [20, 12, 68, 32], "space": "screenshot_pixels", "label": "Home", "visionConfidence": 0.92 },
+      "expected": { "role": "link", "name": "Home" }
+    },
+    {
+      "id": "vision-02",
+      "kind": "form submit button",
+      "difficulty": "easy",
+      "viewport": { "w": 1280, "h": 800 },
+      "image": { "width": 1280, "height": 800 },
+      "elements": [
+        { "key": "e1", "role": "textbox", "name": "Email", "tag": "input", "rect": { "x": 200, "y": 300, "w": 280, "h": 36 } },
+        { "key": "e2", "role": "button", "name": "Create account", "tag": "button", "rect": { "x": 200, "y": 352, "w": 160, "h": 40 } }
+      ],
+      "overlay": null,
+      "proposal": { "bbox": [196, 348, 168, 48], "space": "screenshot_pixels", "label": "Create account", "visionConfidence": 0.95 },
+      "expected": { "role": "button", "name": "Create account" }
+    },
+    {
+      "id": "vision-03",
+      "kind": "search interface",
+      "difficulty": "easy",
+      "viewport": { "w": 1280, "h": 800 },
+      "image": { "width": 1280, "height": 800 },
+      "elements": [
+        { "key": "e1", "role": "searchbox", "name": "Search", "tag": "input", "rect": { "x": 400, "y": 120, "w": 320, "h": 40 } },
+        { "key": "e2", "role": "button", "name": "Search", "tag": "button", "rect": { "x": 728, "y": 120, "w": 72, "h": 40 } }
+      ],
+      "overlay": null,
+      "proposal": { "bbox": [724, 116, 80, 48], "space": "screenshot_pixels", "label": "Search button", "visionConfidence": 0.88 },
+      "expected": { "role": "button", "name": "Search" }
+    },
+    {
+      "id": "vision-04",
+      "kind": "dropdown select",
+      "difficulty": "medium",
+      "viewport": { "w": 1280, "h": 800 },
+      "image": { "width": 1280, "height": 800 },
+      "elements": [
+        { "key": "e1", "role": "combobox", "name": "Country", "tag": "select", "rect": { "x": 200, "y": 420, "w": 240, "h": 36 } }
+      ],
+      "overlay": null,
+      "proposal": { "bbox": [196, 416, 248, 44], "space": "screenshot_pixels", "label": "Country", "visionConfidence": 0.9 },
+      "expected": { "role": "combobox", "name": "Country" }
+    },
+    {
+      "id": "vision-05",
+      "kind": "video player control",
+      "difficulty": "medium",
+      "viewport": { "w": 1280, "h": 800 },
+      "image": { "width": 1280, "height": 800 },
+      "elements": [
+        { "key": "e1", "role": "button", "name": "Play", "tag": "button", "rect": { "x": 80, "y": 640, "w": 48, "h": 48 } },
+        { "key": "e2", "role": "button", "name": "Mute", "tag": "button", "rect": { "x": 140, "y": 640, "w": 48, "h": 48 } }
+      ],
+      "overlay": null,
+      "proposal": { "bbox": [76, 636, 56, 56], "space": "screenshot_pixels", "label": "Play", "visionConfidence": 0.86 },
+      "expected": { "role": "button", "name": "Play" }
+    },
+    {
+      "id": "vision-06",
+      "kind": "modal dialog confirm",
+      "difficulty": "medium",
+      "viewport": { "w": 1280, "h": 800 },
+      "image": { "width": 1280, "height": 800 },
+      "elements": [
+        { "key": "e1", "role": "button", "name": "Confirm deletion", "tag": "button", "rect": { "x": 540, "y": 460, "w": 200, "h": 44 } },
+        { "key": "e2", "role": "button", "name": "Keep file", "tag": "button", "rect": { "x": 760, "y": 460, "w": 140, "h": 44 } }
+      ],
+      "overlay": null,
+      "proposal": { "bbox": [536, 456, 208, 52], "space": "screenshot_pixels", "label": "Confirm deletion", "visionConfidence": 0.93 },
+      "expected": { "role": "button", "name": "Confirm deletion" }
+    },
+    {
+      "id": "vision-07",
+      "kind": "card link among similar cards",
+      "difficulty": "hard",
+      "viewport": { "w": 1280, "h": 800 },
+      "image": { "width": 1280, "height": 800 },
+      "elements": [
+        { "key": "e1", "role": "link", "name": "Read more about cats", "tag": "a", "rect": { "x": 60, "y": 500, "w": 180, "h": 24 } },
+        { "key": "e2", "role": "link", "name": "Read more about dogs", "tag": "a", "rect": { "x": 400, "y": 500, "w": 190, "h": 24 } },
+        { "key": "e3", "role": "link", "name": "Read more about birds", "tag": "a", "rect": { "x": 740, "y": 500, "w": 190, "h": 24 } }
+      ],
+      "overlay": null,
+      "proposal": { "bbox": [396, 496, 198, 32], "space": "screenshot_pixels", "label": "Read more about dogs", "visionConfidence": 0.84 },
+      "expected": { "role": "link", "name": "Read more about dogs" }
+    },
+    {
+      "id": "vision-08",
+      "kind": "list item action",
+      "difficulty": "hard",
+      "viewport": { "w": 1280, "h": 800 },
+      "image": { "width": 1280, "height": 800 },
+      "elements": [
+        { "key": "e1", "role": "button", "name": "Delete item 1", "tag": "button", "rect": { "x": 900, "y": 200, "w": 120, "h": 32 } },
+        { "key": "e2", "role": "button", "name": "Delete item 2", "tag": "button", "rect": { "x": 900, "y": 250, "w": 120, "h": 32 } }
+      ],
+      "overlay": null,
+      "proposal": { "bbox": [896, 246, 128, 40], "space": "screenshot_pixels", "label": "Delete item 2", "visionConfidence": 0.87 },
+      "expected": { "code": "CONFIRMATION_REQUIRED" }
+    },
+    {
+      "id": "vision-09",
+      "kind": "disabled control",
+      "difficulty": "hard",
+      "viewport": { "w": 1280, "h": 800 },
+      "image": { "width": 1280, "height": 800 },
+      "elements": [
+        { "key": "e1", "role": "button", "name": "Submit order", "tag": "button", "rect": { "x": 500, "y": 600, "w": 160, "h": 44 }, "disabled": true }
+      ],
+      "overlay": null,
+      "proposal": { "bbox": [496, 596, 168, 52], "space": "screenshot_pixels", "label": "Submit order", "visionConfidence": 0.91 },
+      "expected": { "code": "TARGET_DISABLED" }
+    },
+    {
+      "id": "vision-10",
+      "kind": "partially visible edge target",
+      "difficulty": "hard",
+      "viewport": { "w": 1280, "h": 800 },
+      "image": { "width": 1280, "height": 800 },
+      "elements": [
+        { "key": "e1", "role": "button", "name": "Next page", "tag": "button", "rect": { "x": 1180, "y": 700, "w": 100, "h": 40 } }
+      ],
+      "overlay": null,
+      "proposal": { "bbox": [1176, 696, 108, 48], "space": "screenshot_pixels", "label": "Next page", "visionConfidence": 0.82 },
+      "expected": { "role": "button", "name": "Next page" }
+    },
+    {
+      "id": "vision-11",
+      "kind": "nested span inside button",
+      "difficulty": "hard",
+      "viewport": { "w": 1280, "h": 800 },
+      "image": { "width": 1280, "height": 800 },
+      "elements": [
+        { "key": "e1", "role": "button", "name": "Add to cart", "tag": "button", "rect": { "x": 300, "y": 500, "w": 140, "h": 44 }, "child": { "tag": "span", "rect": { "x": 320, "y": 512, "w": 60, "h": 20 } } }
+      ],
+      "overlay": null,
+      "proposal": { "bbox": [316, 508, 68, 28], "space": "screenshot_pixels", "label": "Add to cart", "visionConfidence": 0.89 },
+      "expected": { "role": "button", "name": "Add to cart" }
+    },
+    {
+      "id": "vision-12",
+      "kind": "duplicate identical buttons",
+      "difficulty": "hard",
+      "viewport": { "w": 1280, "h": 800 },
+      "image": { "width": 1280, "height": 800 },
+      "elements": [
+        { "key": "e1", "role": "button", "name": "Next", "tag": "button", "rect": { "x": 200, "y": 700, "w": 90, "h": 36 } },
+        { "key": "e2", "role": "button", "name": "Next", "tag": "button", "rect": { "x": 1000, "y": 700, "w": 90, "h": 36 } }
+      ],
+      "overlay": null,
+      "proposal": { "bbox": [996, 696, 98, 44], "space": "screenshot_pixels", "visionConfidence": 0.85 },
+      "expected": { "rect": { "x": 1000, "y": 700, "w": 90, "h": 36 } }
+    },
+    {
+      "id": "vision-13",
+      "kind": "occluded by modal overlay",
+      "difficulty": "hard",
+      "viewport": { "w": 1280, "h": 800 },
+      "image": { "width": 1280, "height": 800 },
+      "elements": [
+        { "key": "e1", "role": "button", "name": "Save draft", "tag": "button", "rect": { "x": 500, "y": 400, "w": 140, "h": 40 } }
+      ],
+      "overlay": { "x": 480, "y": 380, "w": 180, "h": 80 },
+      "proposal": { "bbox": [496, 396, 148, 48], "space": "screenshot_pixels", "label": "Save draft", "visionConfidence": 0.9 },
+      "expected": { "code": "TARGET_OCCLUDED" }
+    },
+    {
+      "id": "vision-14",
+      "kind": "stale capture after navigation",
+      "difficulty": "hard",
+      "viewport": { "w": 1280, "h": 800 },
+      "image": { "width": 1280, "height": 800 },
+      "url": "https://other.example/page",
+      "elements": [
+        { "key": "e1", "role": "button", "name": "Save draft", "tag": "button", "rect": { "x": 500, "y": 400, "w": 140, "h": 40 } }
+      ],
+      "overlay": null,
+      "proposal": { "bbox": [496, 396, 148, 48], "space": "screenshot_pixels", "label": "Save draft", "visionConfidence": 0.9 },
+      "expected": { "code": "STALE_CAPTURE" }
+    },
+    {
+      "id": "vision-15",
+      "kind": "retina DPR capture",
+      "difficulty": "medium",
+      "viewport": { "w": 1280, "h": 800 },
+      "dpr": 2,
+      "image": { "width": 2560, "height": 1600 },
+      "elements": [
+        { "key": "e1", "role": "button", "name": "Download report", "tag": "button", "rect": { "x": 900, "y": 700, "w": 170, "h": 44 } }
+      ],
+      "overlay": null,
+      "proposal": { "bbox": [1792, 1392, 356, 104], "space": "screenshot_pixels", "label": "Download report", "visionConfidence": 0.88 },
+      "expected": { "role": "button", "name": "Download report" }
+    }
+  ]
+}

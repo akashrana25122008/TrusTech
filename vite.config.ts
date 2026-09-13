@@ -27,6 +27,9 @@ export default defineConfig({
       },
     },
   },
+  worker: {
+    format: "es",
+  },
   test: {
     include: ["tests/**/*.test.{ts,tsx}"],
     // DOM tests (grounder/indexer/observer/executor) need a browser-like env.

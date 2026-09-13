@@ -1,0 +1,67 @@
+{
+  "generatedAt": "2026-09-13T14:56:49.684Z",
+  "image": "sample-cats.png",
+  "native": "622x412",
+  "rows": [
+    {
+      "maxEdge": 320,
+      "width": 320,
+      "height": 212,
+      "transferBytes": 271360,
+      "prepMs": 222.34,
+      "inferenceMs": 5158.87,
+      "detections": 3,
+      "cats": 2
+    },
+    {
+      "maxEdge": 320,
+      "width": 320,
+      "height": 212,
+      "transferBytes": 271360,
+      "prepMs": 160.47,
+      "inferenceMs": 3758.19,
+      "detections": 3,
+      "cats": 2
+    },
+    {
+      "maxEdge": 480,
+      "width": 480,
+      "height": 318,
+      "transferBytes": 610560,
+      "prepMs": 160.01,
+      "inferenceMs": 3104.08,
+      "detections": 2,
+      "cats": 2
+    },
+    {
+      "maxEdge": 480,
+      "width": 480,
+      "height": 318,
+      "transferBytes": 610560,
+      "prepMs": 194.45,
+      "inferenceMs": 3049.02,
+      "detections": 2,
+      "cats": 2
+    },
+    {
+      "maxEdge": 1333,
+      "width": 622,
+      "height": 412,
+      "transferBytes": 1025056,
+      "prepMs": 254.67,
+      "inferenceMs": 3189.53,
+      "detections": 2,
+      "cats": 2
+    },
+    {
+      "maxEdge": 1333,
+      "width": 622,
+      "height": 412,
+      "transferBytes": 1025056,
+      "prepMs": 155.58,
+      "inferenceMs": 3110.68,
+      "detections": 2,
+      "cats": 2
+    }
+  ]
+}

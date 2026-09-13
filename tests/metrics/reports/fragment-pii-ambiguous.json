@@ -1,0 +1,47 @@
+{
+  "name": "pii-ambiguous",
+  "recordedAt": "2026-09-13T14:56:24.730Z",
+  "data": {
+    "items": [
+      {
+        "id": "pii-a1",
+        "text": "Aadhaar 234567890125",
+        "note": "Invalid Verhoeff checksum, but the engine emits a weak finding by design; tracked separately, excluded from headline precision.",
+        "findings": [
+          {
+            "type": "aadhaar",
+            "confidence": 0.85,
+            "start": 8,
+            "end": 20
+          }
+        ]
+      },
+      {
+        "id": "pii-a2",
+        "text": "num 298765432109",
+        "note": "No context cue; weak 0.55 finding by design; tracked separately.",
+        "findings": [
+          {
+            "type": "aadhaar",
+            "confidence": 0.55,
+            "start": 4,
+            "end": 16
+          }
+        ]
+      },
+      {
+        "id": "pii-a3",
+        "text": "email me@example",
+        "note": "Dotless handle matches the UPI rule, not the email rule; engine behavior by design; tracked separately.",
+        "findings": [
+          {
+            "type": "upi",
+            "confidence": 0.8,
+            "start": 6,
+            "end": 16
+          }
+        ]
+      }
+    ]
+  }
+}

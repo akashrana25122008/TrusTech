@@ -19,6 +19,7 @@ import type { WindowManager } from "./window-manager";
 import type { ContentChannel } from "./content-channel";
 import type { BrowserAdapter } from "@/browser";
 import type { ContentReadyMessage, ContentErrorCode } from "@/shared/messages";
+import { containsImagePayload } from "@/privacy/image";
 
 const PAGE_RELAY_TYPES: ReadonlySet<string> = new Set(["PAGE_CHANGED"]);
 const CONTENT_RPC_TYPES: ReadonlySet<string> = new Set([
@@ -26,6 +27,8 @@ const CONTENT_RPC_TYPES: ReadonlySet<string> = new Set([
   "CTX_OBSERVE",
   "CTX_GROUND",
   "CTX_EXECUTE",
+  "CTX_VISION_POINT",
+  "CTX_PRIVACY_SCAN",
 ]);
 const AGENT_BROADCAST_TYPES: ReadonlySet<string> = new Set([
   "AGENT_HIGHLIGHT",
@@ -63,6 +66,15 @@ export class MessageRouter {
     const msg = message as Record<string, unknown> | undefined;
     if (!msg?.type || typeof msg.type !== "string") return false;
     const type = msg.type as string;
+
+    // --- Phase 3 privacy boundary: no extension message may carry raw
+    // --- image bytes. The ONLY sanctioned image path is the
+    // --- ImageTransmissionGate (sanitized PNG + validated manifest).
+    // --- Anything else is dropped here, before any relay.
+    if (containsImagePayload(msg)) {
+      sendResponse({ ok: false, error: "raw_image_blocked" });
+      return true;
+    }
 
     // --- content handshake: CONTENT_READY push from the content script ---
     if (CONTENT_HANDSHAKE_TYPES.has(type)) {

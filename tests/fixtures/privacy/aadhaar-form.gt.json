@@ -1,0 +1,26 @@
+{
+  "id": "aadhaar-form",
+  "viewport": {
+    "width": 640,
+    "height": 480
+  },
+  "image": "aadhaar-form.png",
+  "grounds": [
+    {
+      "type": "AADHAAR",
+      "bbox": {
+        "x": 48,
+        "y": 92,
+        "width": 360,
+        "height": 44
+      },
+      "minIoU": 0.4
+    }
+  ],
+  "negatives": [
+    "KYC-482915 (6-digit run, no postal cue)",
+    "₹1,299 price"
+  ],
+  "masked": [],
+  "notes": "Verhoeff-valid Aadhaar; label-for cue via <label for>. Power-of-the-rules: 6-digit run without a cue → no region."
+}

@@ -104,18 +104,63 @@ export interface CtxSetDomainResponse {
   payload: { ok: boolean };
 }
 
+/** Panel → content: ground a vision_step point to a live element and click it. */
+export interface CtxVisionPointRequest {
+  type: "CTX_VISION_POINT";
+  payload: {
+    point: { x: number; y: number };
+    image: { width: number; height: number };
+    confidence?: number;
+    bbox?: { x: number; y: number; width: number; height: number };
+    normalized?: { x: number; y: number; width: number; height: number };
+    coordinateSpace?: "screenshot_pixels" | "viewport_css" | "page_css" | "device_pixels";
+    viewport?: { width: number; height: number };
+    dpr?: number;
+    scroll?: { x: number; y: number };
+    crop?: { x: number; y: number };
+    captureId?: string;
+    capturedAt?: number;
+    url?: string;
+    label?: string;
+  };
+}
+export interface CtxVisionPointResponse {
+  type: "CTX_VISION_POINT_RESULT";
+  payload: {
+    ok: boolean;
+    viewport?: { x: number; y: number };
+    grounding?: { status: string; elementId?: string; method?: string; reason?: string };
+    execution?: ActionResult;
+    error?: string;
+  };
+}
+
+/** Panel → content: scan the live page DOM for privacy signals (Phase 2). */
+export interface CtxPrivacyScanRequest {
+  type: "CTX_PRIVACY_SCAN";
+  payload?: { minConfidence?: number };
+}
+/** Content → panel: viewport-relative DOM privacy scan result. */
+export interface CtxPrivacyScanResponse {
+  type: "CTX_PRIVACY_SCAN_RESULT";
+  payload: import("@/privacy/dom-scanner").DomPrivacyScan;
+}
+
 export type ContentRequest =
   | CtxObserveRequest
   | CtxGroundRequest
   | CtxExecuteRequest
   | CtxSetDomainRequest
+  | CtxPrivacyScanRequest
   | CtxPingRequest;
 
 export type ContentResponse =
   | CtxObserveResponse
   | CtxGroundResponse
   | CtxExecuteResponse
+  | CtxVisionPointResponse
   | CtxSetDomainResponse
+  | CtxPrivacyScanResponse
   | CtxPongResponse
   | InjectActionResultResponse;
 
@@ -186,6 +231,7 @@ export type PanelBusRequest =
   | { type: "CTX_OBSERVE" }
   | { type: "CTX_GROUND"; payload: { target: TargetSpec } }
   | { type: "CTX_EXECUTE"; payload: { action: AgentAction; groundedId?: string } }
+  | { type: "CTX_VISION_POINT"; payload: CtxVisionPointRequest["payload"] }
   | { type: "BROWSER_COMMAND"; payload: BrowserCommandMessageV2Payload };
 
 export type PanelBusResponse =

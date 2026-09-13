@@ -1,0 +1,361 @@
+{
+  "version": 1,
+  "notes": [
+    "Ground truth for TrusTech's PII fusion engine (FindingType level).",
+    "CLEAR group feeds headline precision/recall. AMBIGUOUS group is measured and reported separately: the engine intentionally emits weak findings for these shapes.",
+    "Matching rule: same type with character-span IoU >= 0.5 (tolerant to separator inclusion).",
+    "Categories without detector support (api keys, auth tokens as PII findings) are out of scope: INSUFFICIENT DATA, covered by the secrets firewall instead.",
+    "All values are synthetic."
+  ],
+  "items": [
+    {
+      "id": "pii-01",
+      "group": "clear",
+      "text": "Contact us at support@example.com for help",
+      "entities": [
+        {
+          "type": "email",
+          "start": 14,
+          "end": 33
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-02",
+      "group": "clear",
+      "text": "Call +91 98765 43210 today",
+      "entities": [
+        {
+          "type": "phone",
+          "start": 5,
+          "end": 20
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-03",
+      "group": "clear",
+      "text": "my number is 98765 43210",
+      "entities": [
+        {
+          "type": "phone",
+          "start": 13,
+          "end": 24
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-04",
+      "group": "clear",
+      "text": "Aadhaar 2345 6789 0124 submitted",
+      "entities": [
+        {
+          "type": "aadhaar",
+          "start": 8,
+          "end": 22
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-05",
+      "group": "clear",
+      "text": "PAN ABCAP1234F issued",
+      "entities": [
+        {
+          "type": "pan",
+          "start": 4,
+          "end": 14
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-06",
+      "group": "clear",
+      "text": "card 4111 1111 1111 1111 charged",
+      "entities": [
+        {
+          "type": "credit_card",
+          "start": 5,
+          "end": 24
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-07",
+      "group": "clear",
+      "text": "card 4111-1111-1111-1111 charged",
+      "entities": [
+        {
+          "type": "credit_card",
+          "start": 5,
+          "end": 24
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-08",
+      "group": "clear",
+      "text": "pay to me@okhdfcbank now",
+      "entities": [
+        {
+          "type": "upi",
+          "start": 7,
+          "end": 20
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-09",
+      "group": "clear",
+      "text": "IFSC HDFC0000267 confirmed",
+      "entities": [
+        {
+          "type": "ifsc",
+          "start": 5,
+          "end": 16
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-10",
+      "group": "clear",
+      "text": "passport A1234567 ready",
+      "entities": [
+        {
+          "type": "passport",
+          "start": 9,
+          "end": 17
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-11",
+      "group": "clear",
+      "text": "voter ABC1234567 listed",
+      "entities": [
+        {
+          "type": "voter_id",
+          "start": 6,
+          "end": 16
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-12",
+      "group": "clear",
+      "text": "DL KA01 12345678901 valid",
+      "entities": [
+        {
+          "type": "driving_licence",
+          "start": 3,
+          "end": 19
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-13",
+      "group": "clear",
+      "text": "SSN 123-45-6789 here",
+      "entities": [
+        {
+          "type": "ssn",
+          "start": 4,
+          "end": 15
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-14",
+      "group": "clear",
+      "text": "server at 192.168.1.1 ok",
+      "entities": [
+        {
+          "type": "ipv4",
+          "start": 10,
+          "end": 21
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-15",
+      "group": "clear",
+      "text": "PIN code 560001 area",
+      "entities": [
+        {
+          "type": "postal",
+          "start": 9,
+          "end": 15
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-16",
+      "group": "clear",
+      "text": "reach me@example.com or +91 98765 43210",
+      "entities": [
+        {
+          "type": "email",
+          "start": 6,
+          "end": 20
+        },
+        {
+          "type": "phone",
+          "start": 24,
+          "end": 39
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-17",
+      "group": "clear",
+      "text": "कार्ड 4111 1111 1111 1111 शुल्क",
+      "entities": [
+        {
+          "type": "credit_card",
+          "start": 6,
+          "end": 25
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "pii-18",
+      "group": "clear",
+      "text": "Call support at 12345",
+      "entities": [],
+      "note": ""
+    },
+    {
+      "id": "pii-19",
+      "group": "clear",
+      "text": "Order 482915, total 1299",
+      "entities": [],
+      "note": ""
+    },
+    {
+      "id": "pii-20",
+      "group": "clear",
+      "text": "Meeting on 31 July 2026",
+      "entities": [],
+      "note": ""
+    },
+    {
+      "id": "pii-21",
+      "group": "clear",
+      "text": "phone 98765",
+      "entities": [],
+      "note": ""
+    },
+    {
+      "id": "pii-22",
+      "group": "clear",
+      "text": "id ABC12",
+      "entities": [],
+      "note": ""
+    },
+    {
+      "id": "pii-23",
+      "group": "clear",
+      "text": "passport a1234567",
+      "entities": [],
+      "note": ""
+    },
+    {
+      "id": "pii-24",
+      "group": "clear",
+      "text": "voter abc1234567",
+      "entities": [],
+      "note": ""
+    },
+    {
+      "id": "pii-25",
+      "group": "clear",
+      "text": "amount 85000 only",
+      "entities": [],
+      "note": ""
+    },
+    {
+      "id": "pii-26",
+      "group": "clear",
+      "text": "asus rog 123456",
+      "entities": [],
+      "note": ""
+    },
+    {
+      "id": "pii-27",
+      "group": "clear",
+      "text": "The event starts at 10am sharp",
+      "entities": [],
+      "note": ""
+    },
+    {
+      "id": "pii-28",
+      "group": "clear",
+      "text": "Verification code 482915",
+      "entities": [],
+      "note": ""
+    },
+    {
+      "id": "pii-29",
+      "group": "clear",
+      "text": "OTP 482915 expired",
+      "entities": [],
+      "note": ""
+    },
+    {
+      "id": "pii-a1",
+      "group": "ambiguous",
+      "text": "Aadhaar 234567890125",
+      "entities": [
+        {
+          "type": "aadhaar",
+          "start": 8,
+          "end": 20
+        }
+      ],
+      "note": "Invalid Verhoeff checksum, but the engine emits a weak finding by design; tracked separately, excluded from headline precision."
+    },
+    {
+      "id": "pii-a2",
+      "group": "ambiguous",
+      "text": "num 298765432109",
+      "entities": [
+        {
+          "type": "aadhaar",
+          "start": 4,
+          "end": 16
+        }
+      ],
+      "note": "No context cue; weak 0.55 finding by design; tracked separately."
+    },
+    {
+      "id": "pii-a3",
+      "group": "ambiguous",
+      "text": "email me@example",
+      "entities": [
+        {
+          "type": "upi",
+          "start": 6,
+          "end": 16
+        }
+      ],
+      "note": "Dotless handle matches the UPI rule, not the email rule; engine behavior by design; tracked separately."
+    }
+  ]
+}

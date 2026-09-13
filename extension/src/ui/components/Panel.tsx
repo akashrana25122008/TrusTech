@@ -1,10 +1,15 @@
-import { useCallback, useState } from "react";
+import { Suspense, lazy, useCallback, useState } from "react";
 import { Header } from "./Header";
-import { RobotStage } from "./RobotStage";
+// The 3D companion (three.js) is the heaviest panel dependency (~600 KB).
+// It is split into its own chunk and loaded after first paint so the
+// lightweight UI (header, composer, controls) is interactive immediately.
+// The fallback preserves the hero layout so there is no visual shift.
+const RobotStage = lazy(() => import("./RobotStage").then((m) => ({ default: m.RobotStage })));
 import { TaskInput } from "./TaskInput";
 import { LiveAgentControls } from "./LiveAgentControls";
 import { ProcessingDetails } from "./ProcessingDetails";
 import { BrowserControlDock } from "./BrowserControlDock";
+import { PrivacyInspector } from "./PrivacyInspector";
 import { useAgentState } from "@/ui/hooks/useAgentState";
 import { useAgentBridge } from "@/ui/hooks/useAgentBridge";
 import { mapAgentToBot } from "@/ui/agent-bot/bot-state-adapter";
@@ -74,10 +79,22 @@ export function Panel() {
       <Header status={state.status} />
 
       <main className="home">
-        <RobotStage
-          mode={state.status}
-          onChamberReady={(h) => h.setMode(mapAgentToBot(state.status))}
-        />
+        <Suspense
+          fallback={
+            <section className="hero" aria-label="TRusTech AI companion">
+              <div className="hero-void" aria-hidden="true">
+                <span className="hero-halo" />
+                <span className="hero-vignette" />
+              </div>
+              <div className="agent-canvas" aria-hidden="true" />
+            </section>
+          }
+        >
+          <RobotStage
+            mode={state.status}
+            onChamberReady={(h) => h.setMode(mapAgentToBot(state.status))}
+          />
+        </Suspense>
 
         {!idle && (
           <section className="now" aria-live="polite">
@@ -162,6 +179,10 @@ export function Panel() {
 
         <div className="details-slot">
           <ProcessingDetails state={state} onClearLog={clearLog} open={detailsOpen} onToggle={setDetailsOpen} />
+        </div>
+
+        <div className="vision-slot">
+          <PrivacyInspector />
         </div>
       </main>
 

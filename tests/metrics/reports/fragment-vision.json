@@ -1,0 +1,255 @@
+{
+  "name": "vision",
+  "recordedAt": "2026-09-13T14:56:23.704Z",
+  "data": {
+    "definition": "grounding accuracy = proposals resolved to the intended element (or documented failure code) / all proposals",
+    "iouNote": "mean proposal-vs-mapped IoU is reported for information only (mapping is exact by construction when dims match)",
+    "fixtures": 15,
+    "passed": 15,
+    "accuracy": 1,
+    "accuracyPct": 100,
+    "wilson95": [
+      0.7961107336956521,
+      1
+    ],
+    "meanProposalIou": 0.7333333333333333,
+    "rows": [
+      {
+        "id": "vision-01",
+        "kind": "navbar link",
+        "difficulty": "easy",
+        "pass": true,
+        "expected": {
+          "role": "link",
+          "name": "Home"
+        },
+        "actual": {
+          "ok": true,
+          "role": "link",
+          "name": "Home"
+        },
+        "iou": 1
+      },
+      {
+        "id": "vision-02",
+        "kind": "form submit button",
+        "difficulty": "easy",
+        "pass": true,
+        "expected": {
+          "role": "button",
+          "name": "Create account"
+        },
+        "actual": {
+          "ok": true,
+          "role": "button",
+          "name": "Create account"
+        },
+        "iou": 1
+      },
+      {
+        "id": "vision-03",
+        "kind": "search interface",
+        "difficulty": "easy",
+        "pass": true,
+        "expected": {
+          "role": "button",
+          "name": "Search"
+        },
+        "actual": {
+          "ok": true,
+          "role": "button",
+          "name": "Search"
+        },
+        "iou": 1
+      },
+      {
+        "id": "vision-04",
+        "kind": "dropdown select",
+        "difficulty": "medium",
+        "pass": true,
+        "expected": {
+          "role": "combobox",
+          "name": "Country"
+        },
+        "actual": {
+          "ok": true,
+          "role": "combobox",
+          "name": "Country"
+        },
+        "iou": 1
+      },
+      {
+        "id": "vision-05",
+        "kind": "video player control",
+        "difficulty": "medium",
+        "pass": true,
+        "expected": {
+          "role": "button",
+          "name": "Play"
+        },
+        "actual": {
+          "ok": true,
+          "role": "button",
+          "name": "Play"
+        },
+        "iou": 1
+      },
+      {
+        "id": "vision-06",
+        "kind": "modal dialog confirm",
+        "difficulty": "medium",
+        "pass": true,
+        "expected": {
+          "role": "button",
+          "name": "Confirm deletion"
+        },
+        "actual": {
+          "ok": true,
+          "role": "button",
+          "name": "Confirm deletion"
+        },
+        "iou": 1
+      },
+      {
+        "id": "vision-07",
+        "kind": "card link among similar cards",
+        "difficulty": "hard",
+        "pass": true,
+        "expected": {
+          "role": "link",
+          "name": "Read more about dogs"
+        },
+        "actual": {
+          "ok": true,
+          "role": "link",
+          "name": "Read more about dogs"
+        },
+        "iou": 1
+      },
+      {
+        "id": "vision-08",
+        "kind": "list item action",
+        "difficulty": "hard",
+        "pass": true,
+        "expected": {
+          "code": "CONFIRMATION_REQUIRED"
+        },
+        "actual": {
+          "code": "CONFIRMATION_REQUIRED"
+        },
+        "iou": 1
+      },
+      {
+        "id": "vision-09",
+        "kind": "disabled control",
+        "difficulty": "hard",
+        "pass": true,
+        "expected": {
+          "code": "TARGET_DISABLED"
+        },
+        "actual": {
+          "code": "TARGET_DISABLED"
+        },
+        "iou": null
+      },
+      {
+        "id": "vision-10",
+        "kind": "partially visible edge target",
+        "difficulty": "hard",
+        "pass": true,
+        "expected": {
+          "role": "button",
+          "name": "Next page"
+        },
+        "actual": {
+          "ok": true,
+          "role": "button",
+          "name": "Next page"
+        },
+        "iou": 1
+      },
+      {
+        "id": "vision-11",
+        "kind": "nested span inside button",
+        "difficulty": "hard",
+        "pass": true,
+        "expected": {
+          "role": "button",
+          "name": "Add to cart"
+        },
+        "actual": {
+          "ok": true,
+          "role": "button",
+          "name": "Add to cart"
+        },
+        "iou": 1
+      },
+      {
+        "id": "vision-12",
+        "kind": "duplicate identical buttons",
+        "difficulty": "hard",
+        "pass": true,
+        "expected": {
+          "rect": {
+            "x": 1000,
+            "y": 700,
+            "w": 90,
+            "h": 36
+          }
+        },
+        "actual": {
+          "ok": true,
+          "viewportPoint": {
+            "x": 1045,
+            "y": 718
+          },
+          "role": "button",
+          "name": "Next"
+        },
+        "iou": 1
+      },
+      {
+        "id": "vision-13",
+        "kind": "occluded by modal overlay",
+        "difficulty": "hard",
+        "pass": true,
+        "expected": {
+          "code": "TARGET_OCCLUDED"
+        },
+        "actual": {
+          "code": "TARGET_OCCLUDED"
+        },
+        "iou": null
+      },
+      {
+        "id": "vision-14",
+        "kind": "stale capture after navigation",
+        "difficulty": "hard",
+        "pass": true,
+        "expected": {
+          "code": "STALE_CAPTURE"
+        },
+        "actual": {
+          "code": "STALE_CAPTURE"
+        },
+        "iou": null
+      },
+      {
+        "id": "vision-15",
+        "kind": "retina DPR capture",
+        "difficulty": "medium",
+        "pass": true,
+        "expected": {
+          "role": "button",
+          "name": "Download report"
+        },
+        "actual": {
+          "ok": true,
+          "role": "button",
+          "name": "Download report"
+        },
+        "iou": 0
+      }
+    ]
+  }
+}

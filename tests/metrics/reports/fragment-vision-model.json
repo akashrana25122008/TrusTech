@@ -1,0 +1,36 @@
+{
+  "name": "vision-model",
+  "recordedAt": "2026-09-13T14:56:29.077Z",
+  "data": {
+    "note": "Known-target presence on a real photo (2 cats in frame per AT-01). No GT boxes exist, so this line is informational and excluded from headline accuracy.",
+    "image": "sample-cats.png",
+    "detections": [
+      {
+        "label": "cat",
+        "type": "element",
+        "confidence": 0.9931864738464355,
+        "bbox": {
+          "x": 142.27155721187592,
+          "y": 145.18256449699402,
+          "width": 384.8295633792877,
+          "height": 191.17845582962036
+        }
+      },
+      {
+        "label": "cat",
+        "type": "element",
+        "confidence": 0.9894458055496216,
+        "bbox": {
+          "x": 157.2104316353798,
+          "y": 42.91928404569626,
+          "width": 242.1090018749237,
+          "height": 79.37547957897186
+        }
+      }
+    ],
+    "catDetections": 2,
+    "knownTargetsPresent": 2,
+    "catRecall": 1,
+    "inferenceMs": 5216.37
+  }
+}

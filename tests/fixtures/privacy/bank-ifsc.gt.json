@@ -1,0 +1,26 @@
+{
+  "id": "bank-ifsc",
+  "viewport": {
+    "width": 640,
+    "height": 480
+  },
+  "image": "bank-ifsc.png",
+  "grounds": [
+    {
+      "type": "IFSC",
+      "bbox": {
+        "x": 48,
+        "y": 48,
+        "width": 360,
+        "height": 44
+      },
+      "minIoU": 0.4
+    }
+  ],
+  "negatives": [
+    "account fragment",
+    "ref number (no 6-digit cue match)"
+  ],
+  "masked": [],
+  "notes": ""
+}

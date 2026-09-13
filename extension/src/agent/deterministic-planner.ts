@@ -43,11 +43,17 @@ function bestSearchInput(snapshot: ObservationSnapshot): string | undefined {
     } else {
       continue;
     }
+    // Native <input type=search> is as strong a signal as a searchbox
+    // role. Mirrors the executor's findSearchInput scoring so the planner
+    // never under-matches a field the executor can already resolve.
+    if (el.type === "search") {
+      score += 4;
+    }
     if (/\bsearch\b/i.test(name)) {
       score += 3;
     } else if (/query|find|lookup/i.test(name)) {
       score += 1;
-    } else if (el.role !== "searchbox") {
+    } else if (el.role !== "searchbox" && el.type !== "search") {
       // A bare text field with no search cue is not provably the search
       // input — skip it rather than typing a query into a random control.
       continue;
@@ -136,13 +142,13 @@ function planStep(
 
   if (/enter the query|enter.*search|type.*query/.test(stepLower)) {
     const inputId = bestSearchInput(snapshot);
+    // Prefer an extracted search topic ("Python compiler") over a bare
+    // platform/site name — the platform is WHERE we search, not WHAT.
+    const targetText =
+      goal.entities.find((e) => e.label === "query")?.value ??
+      goal.entities.find((e) => e.label !== "site" && e.label !== "platform")?.value ??
+      goal.goal;
     if (inputId) {
-      // Prefer an extracted search topic ("Python compiler") over a bare
-      // platform/site name — the platform is WHERE we search, not WHAT.
-      const targetText =
-        goal.entities.find((e) => e.label === "query")?.value ??
-        goal.entities.find((e) => e.label !== "site" && e.label !== "platform")?.value ??
-        goal.goal;
       return {
         action: {
           action: "type",
@@ -154,6 +160,20 @@ function planStep(
         justification: step,
       };
     }
+    // No provable search input under the planner's (deliberately narrower)
+    // name heuristics. Defer to the executor's strictly richer resolver
+    // (aria-label/placeholder/type=search) via a targetless SEARCH — it
+    // self-resolves the field and submits. Never act on an arbitrary
+    // element; the executor re-passes its own resolver on the page.
+    return {
+      action: {
+        action: "search",
+        text: targetText,
+        confidence: 0.55,
+        expectedOutcome: { type: "content_change" },
+      },
+      justification: `${step} — no named search field, delegating to executor self-resolution`,
+    };
   }
 
   // In-platform media flow: pick a result link and open it. When the browser

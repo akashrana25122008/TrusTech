@@ -13,6 +13,8 @@ import { AgentOverlay } from "./overlay";
 import { executeAction, performAction, type PageAction } from "./executor";
 import { PageObserver } from "./observer";
 import { groundTarget } from "./grounder";
+import { scanPageDom } from "./privacy";
+import { groundVisionPoint } from "./vision-bridge";
 import { rawApi } from "@/shared/runtime";
 import type { ContentRequest, ContentResponse, PageChangedMessage, ContentReadyMessage } from "@/shared/messages";
 
@@ -105,6 +107,18 @@ export function handleMessage(
       pageObserver.start(-1);
       sendResponse({ type: "CTX_SET_DOMAIN_RESULT", payload: { ok: true } });
       break;
+    }
+    case "CTX_PRIVACY_SCAN": {
+      sendResponse({ type: "CTX_PRIVACY_SCAN_RESULT", payload: scanPageDom() });
+      break;
+    }
+    case "CTX_VISION_POINT": {
+      const vpPayload = payload as unknown as import("./vision-bridge").VisionPointPayload;
+      void groundVisionPoint(vpPayload).then((result) => {
+        pageObserver.invalidate();
+        sendResponse({ type: "CTX_VISION_POINT_RESULT", payload: result });
+      });
+      return true;
     }
     case "AGENT_HIGHLIGHT":
       overlay.highlight(

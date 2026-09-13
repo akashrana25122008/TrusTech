@@ -1,0 +1,12 @@
+{
+  "id": "photo-negative",
+  "viewport": {
+    "width": 640,
+    "height": 480
+  },
+  "image": "photo-negative.png",
+  "grounds": [],
+  "negatives": [],
+  "masked": [],
+  "notes": "real photo (two cats) + clean DOM → must yield NO FACE (no person in frame) and no text PII. Honest real-model negative."
+}

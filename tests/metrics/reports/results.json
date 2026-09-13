@@ -1,0 +1,437 @@
+{
+  "generatedAt": "2026-09-13T14:56:09.313Z",
+  "commit": "3de7562",
+  "environment": {
+    "node": "v26.0.0",
+    "platform": "darwin-arm64"
+  },
+  "visionAccuracy": {
+    "value": 1,
+    "display": "100.0%",
+    "fixtures": 15,
+    "passed": 15,
+    "wilson95": [
+      0.7961107336956521,
+      1
+    ],
+    "status": "MEASURED"
+  },
+  "visionModel": {
+    "note": "Known-target presence on a real photo (2 cats in frame per AT-01). No GT boxes exist, so this line is informational and excluded from headline accuracy.",
+    "image": "sample-cats.png",
+    "detections": 2,
+    "catsDetected": 2,
+    "knownTargets": 2,
+    "inferenceMs": 1788.17,
+    "status": "MEASURED"
+  },
+  "pii": {
+    "precision": 1,
+    "precisionDisplay": "100.0%",
+    "recall": 1,
+    "recallDisplay": "100.0%",
+    "f1": 1,
+    "tp": 18,
+    "fp": 0,
+    "fn": 0,
+    "clearItems": 29,
+    "perCategory": {
+      "aadhaar": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "credit_card": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 3,
+        "ci95": [
+          0.43849391955098227,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "driving_licence": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "email": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 2,
+        "ci95": [
+          0.34237195288961925,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "ifsc": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "ipv4": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "pan": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "passport": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "phone": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 3,
+        "ci95": [
+          0.43849391955098227,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "postal": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "ssn": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "upi": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      },
+      "voter_id": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "samples": 1,
+        "ci95": [
+          0.20654329147389294,
+          1
+        ],
+        "precisionPct": 100,
+        "recallPct": 100
+      }
+    },
+    "failures": [],
+    "ambiguousTrackedSeparately": 3,
+    "status": "MEASURED"
+  },
+  "redaction": {
+    "precision": 1,
+    "precisionDisplay": "100.0%",
+    "recall": 1,
+    "recallDisplay": "100.0%",
+    "gtBoxes": 10,
+    "appliedOps": 7,
+    "overRedactedOps": 0,
+    "status": "MEASURED"
+  },
+  "latency": {
+    "stages": {
+      "visionInference": {
+        "n": 5,
+        "min": 1193.654708,
+        "median": 1200.8206249999994,
+        "p95": 1246.8892834000003,
+        "max": 1256.7861250000005,
+        "mean": 1210.6103583999998,
+        "failures": 0
+      },
+      "sanitization": {
+        "n": 15,
+        "min": 2.1832500000000437,
+        "median": 2.825790999999299,
+        "p95": 4.216862600000604,
+        "max": 4.810666999999739,
+        "mean": 3.0527360000000043,
+        "failures": 0
+      },
+      "transmission": {
+        "n": 15,
+        "min": 52.455832999999984,
+        "median": 53.475540999999794,
+        "p95": 64.37847490000058,
+        "max": 66.85320800000045,
+        "mean": 55.72863893333294,
+        "failures": 0
+      },
+      "grounding": {
+        "n": 50,
+        "min": 0.08812500000021828,
+        "median": 0.10491649999949004,
+        "p95": 0.223083850000512,
+        "max": 0.2669580000001588,
+        "mean": 0.12415170000000217,
+        "failures": 0
+      },
+      "execution": {
+        "n": 50,
+        "min": 0.07729199999994307,
+        "median": 0.08974999999918509,
+        "p95": 0.11603749999994761,
+        "max": 0.14804200000071432,
+        "mean": 0.09503078000001551,
+        "failures": 0
+      },
+      "verification": {
+        "n": 15,
+        "min": 1.6108750000003056,
+        "median": 2.382459000000381,
+        "p95": 2.8274963000012576,
+        "max": 2.924125000001368,
+        "mean": 2.2617057333337773,
+        "failures": 0
+      },
+      "e2e": {
+        "n": 10,
+        "min": 0.5792079999991984,
+        "median": 0.7401039999995191,
+        "p95": 0.8185732500001904,
+        "max": 0.8227920000008453,
+        "mean": 0.7147999999999228,
+        "failures": 0
+      }
+    },
+    "definition": {
+      "e2e": "time from visual-planner call start to validated action (stub capture, real inference/sanitize/permit/verify/grounding, mock VLM transport)",
+      "warmup": "2 discarded iterations per stage",
+      "timers": "performance.now high-resolution"
+    },
+    "status": "MEASURED"
+  },
+  "resources": {
+    "methodology": {
+      "memory": "process.memoryUsage().rss sampled around the workload in-process; GC timing can shift numbers between runs",
+      "cpu": {
+        "status": "NOT_MEASURED",
+        "reason": "no reliable CPU API in this runtime"
+      },
+      "network": "payload bytes measured by encoding; request counts observed on mock transports in transmission tests"
+    },
+    "memory": {
+      "baselineRssMb": 75.83,
+      "peakRssMb": 157.08,
+      "finalRssMb": 157.08,
+      "peakDeltaMb": 81.25,
+      "unit": "MB"
+    },
+    "payloads": {
+      "fixturePngBytes": [
+        {
+          "file": "aadhaar-form.png",
+          "bytes": 3203
+        },
+        {
+          "file": "bank-ifsc.png",
+          "bytes": 2843
+        },
+        {
+          "file": "card-checkout.png",
+          "bytes": 3326
+        },
+        {
+          "file": "contact.png",
+          "bytes": 2633
+        },
+        {
+          "file": "gov-ids.png",
+          "bytes": 3025
+        },
+        {
+          "file": "masked-clean.png",
+          "bytes": 3527
+        },
+        {
+          "file": "pan-tax.png",
+          "bytes": 3137
+        },
+        {
+          "file": "photo-negative.png",
+          "bytes": 677543
+        },
+        {
+          "file": "pwd-login.png",
+          "bytes": 3522
+        }
+      ],
+      "sanitizedPngBytes": [
+        {
+          "label": "sanitized-640x480-1regions",
+          "bytes": 1229438
+        },
+        {
+          "label": "sanitized-640x480-6regions",
+          "bytes": 1229438
+        },
+        {
+          "label": "sanitized-640x480-24regions",
+          "bytes": 1229438
+        }
+      ],
+      "rawPngEncoderBytes": 12404
+    },
+    "requests": {
+      "sanitizedTransmissionsObserved": 3,
+      "note": "AT-04/AT-07 assert 1 request per allowed transmission; AT-03/AT-05 assert 0 on block"
+    },
+    "status": "MEASURED"
+  },
+  "unsupportedCategories": {
+    "status": "INSUFFICIENT DATA",
+    "detail": "API keys and auth tokens have no PII-finding support in the detector (covered by the secrets firewall instead); not measured here."
+  },
+  "cpu": {
+    "status": "NOT_MEASURED",
+    "reason": "no reliable CPU API in this runtime"
+  },
+  "backendVlmLatency": {
+    "status": "NOT_MEASURED",
+    "reason": "no live provider key in this environment; fake-provider timing would be meaningless"
+  },
+  "weightedScore": {
+    "weights": {
+      "visualContextAccuracy": "25%",
+      "piiF1": "20%",
+      "redactionPrecision": "20%",
+      "clientResources": "20%",
+      "e2eLatency": "15%"
+    },
+    "normalization": [
+      "accuracy/precision/recall/F1 enter as 0..1 (higher is better).",
+      "resourceScore = max(0, 1 - peakRssDeltaMb/500): 500 MB is a stated generous client bound, not a product claim.",
+      "latencyScore = max(0, 1 - e2eMedianMs/30000): 30 s is the stated task budget matching provider timeouts.",
+      "Formulas are budget-based and documented here; they were not tuned to maximize the score."
+    ],
+    "inputs": {
+      "visionAccuracy": 1,
+      "piiF1": 1,
+      "redactionPrecision": 1,
+      "resourceScore": 0.8375,
+      "latencyScore": 0.9999753298666667
+    },
+    "value": 0.96749629948,
+    "display": "96.7%",
+    "status": "MEASURED"
+  },
+  "baseline": "No historical baseline available."
+}

@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 import backend.app.api.agent_step as step_module
 from backend.app.main import app
+from backend.app.services.ai.manager import build_simple_manager
 from backend.app.services.llm import (
     GroqAuthError,
     GroqRateLimitError,
@@ -67,8 +68,9 @@ def no_key(monkeypatch):
     )
 
 
-def use_provider(monkeypatch, provider):
-    monkeypatch.setattr(step_module, "_provider", lambda: provider)
+def use_provider(monkeypatch, provider, *, configured: bool = True):
+    manager = build_simple_manager(provider, name="fake", configured=configured)
+    monkeypatch.setattr(step_module, "_ai_manager", lambda: manager)
 
 
 def test_valid_step_returns_normalized_action(settings, monkeypatch):
@@ -77,6 +79,7 @@ def test_valid_step_returns_normalized_action(settings, monkeypatch):
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["action"] == {"action": "click", "target": {"elementId": "el_001"}}
+    assert body["provider"] == "fake"
     assert body["model"] == "openai/gpt-oss-20b"
     assert body["usage"] == {"prompt_tokens": 10}
 
@@ -110,7 +113,7 @@ def test_unsafe_url_and_invented_id_rejected_502(settings, monkeypatch):
 
 def test_missing_key_is_503_without_calling_groq(no_key, monkeypatch):
     called = []
-    use_provider(monkeypatch, FakeProvider('{"action": "finish"}'))
+    use_provider(monkeypatch, FakeProvider('{"action": "finish"}'), configured=False)
     resp = client.post("/api/agent/step", json=BASE_BODY)
     assert resp.status_code == 503
     assert "not configured" in resp.json()["detail"]
@@ -126,10 +129,10 @@ def test_auth_failure_is_502_and_leaks_no_key(settings, monkeypatch):
     assert "gsk" not in resp.text
 
 
-def test_timeout_is_503_with_timeout_detail(settings, monkeypatch):
+def test_timeout_is_504_with_timeout_detail(settings, monkeypatch):
     use_provider(monkeypatch, FailingProvider(GroqTimeoutError("slow")))
     resp = client.post("/api/agent/step", json=BASE_BODY)
-    assert resp.status_code == 503
+    assert resp.status_code == 504
     assert "timed out" in resp.json()["detail"]
 
 
@@ -138,17 +141,16 @@ def test_rate_limit_is_503_with_rate_limit_detail(settings, monkeypatch):
     resp = client.post("/api/agent/step", json=BASE_BODY)
     assert resp.status_code == 503
     assert "rate-limited" in resp.json()["detail"]
-    assert "429" in resp.json()["detail"]
 
 
-def test_server_error_is_503_with_error_class(settings, monkeypatch):
+def test_server_error_is_503_unavailable_detail(settings, monkeypatch):
     use_provider(monkeypatch, FailingProvider(GroqServerError("Groq server error (HTTP 500)")))
     resp = client.post("/api/agent/step", json=BASE_BODY)
     assert resp.status_code == 503
-    assert "GroqServerError" in resp.json()["detail"]
+    assert "unavailable" in resp.json()["detail"]
 
 
-def test_bad_response_body_is_502_parse_class(settings, monkeypatch):
+def test_bad_response_body_is_502_unusable_response(settings, monkeypatch):
     use_provider(monkeypatch, FailingProvider(GroqResponseError("Groq returned invalid JSON")))
     resp = client.post("/api/agent/step", json=BASE_BODY)
     assert resp.status_code == 502

@@ -1,0 +1,27 @@
+# TrusTech production container — serves the built frontend and reverse
+# proxies the API to the FastAPI gateway. The backend runs as a separate
+# container/service; point BACKEND_UPSTREAM at it (compose / ECS / run).
+#   Caddy  → /srv/www (built dist: panel + content.js) on 8080
+#         → /api/* and /health  → $BACKEND_UPSTREAM (default localhost:8000)
+
+{
+	auto_https off
+}
+
+{$TRUSTECH_SITE_ADDR::8080} {
+	root * /srv/www
+	encode gzip
+
+	handle /api/* {
+		reverse_proxy {$BACKEND_UPSTREAM:http://localhost:8000}
+	}
+
+	handle /health {
+		reverse_proxy {$BACKEND_UPSTREAM:http://localhost:8000}
+	}
+
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -1,0 +1,108 @@
+{
+  "name": "redaction",
+  "recordedAt": "2026-09-13T14:56:23.359Z",
+  "data": {
+    "definition": {
+      "recall": "GT boxes with >=95% area covered / all GT boxes",
+      "precision": "applied ops covering >=95% of >=1 GT box / all applied ops",
+      "overRedaction": "applied op area > 3x union area of covered GT boxes"
+    },
+    "scenes": 7,
+    "gtBoxes": 10,
+    "coveredBoxes": 10,
+    "appliedOps": 7,
+    "correctOps": 7,
+    "recall": 1,
+    "recallPct": 100,
+    "recallWilson95": [
+      0.7224598312333834,
+      1
+    ],
+    "precision": 1,
+    "precisionPct": 100,
+    "precisionWilson95": [
+      0.6456611570247934,
+      1
+    ],
+    "overRedactedOps": 0,
+    "rows": [
+      {
+        "id": "red-01",
+        "kind": "single password field plus button",
+        "gtBoxes": 1,
+        "covered": 1,
+        "appliedOps": 1,
+        "correctOps": 1,
+        "overRedacted": 0,
+        "keepIntact": true,
+        "verified": true
+      },
+      {
+        "id": "red-02",
+        "kind": "card number plus merchant context",
+        "gtBoxes": 1,
+        "covered": 1,
+        "appliedOps": 1,
+        "correctOps": 1,
+        "overRedacted": 0,
+        "keepIntact": true,
+        "verified": true
+      },
+      {
+        "id": "red-03",
+        "kind": "three types sharing one paragraph box",
+        "gtBoxes": 3,
+        "covered": 3,
+        "appliedOps": 1,
+        "correctOps": 1,
+        "overRedacted": 0,
+        "keepIntact": true,
+        "verified": true
+      },
+      {
+        "id": "red-04",
+        "kind": "overlapping face and email boxes",
+        "gtBoxes": 2,
+        "covered": 2,
+        "appliedOps": 1,
+        "correctOps": 1,
+        "overRedacted": 0,
+        "keepIntact": true,
+        "verified": true
+      },
+      {
+        "id": "red-05",
+        "kind": "clean scene, nothing sensitive",
+        "gtBoxes": 0,
+        "covered": 0,
+        "appliedOps": 0,
+        "correctOps": 0,
+        "overRedacted": 0,
+        "keepIntact": true,
+        "verified": true
+      },
+      {
+        "id": "red-06",
+        "kind": "tiny sensitive box",
+        "gtBoxes": 1,
+        "covered": 1,
+        "appliedOps": 1,
+        "correctOps": 1,
+        "overRedacted": 0,
+        "keepIntact": true,
+        "verified": true
+      },
+      {
+        "id": "red-07",
+        "kind": "government id row",
+        "gtBoxes": 2,
+        "covered": 2,
+        "appliedOps": 2,
+        "correctOps": 2,
+        "overRedacted": 0,
+        "keepIntact": true,
+        "verified": true
+      }
+    ]
+  }
+}

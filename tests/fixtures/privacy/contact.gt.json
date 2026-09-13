@@ -1,0 +1,43 @@
+{
+  "id": "contact",
+  "viewport": {
+    "width": 640,
+    "height": 480
+  },
+  "image": "contact.png",
+  "grounds": [
+    {
+      "type": "PHONE",
+      "bbox": {
+        "x": 48,
+        "y": 48,
+        "width": 540,
+        "height": 26
+      },
+      "minIoU": 0.4
+    },
+    {
+      "type": "EMAIL",
+      "bbox": {
+        "x": 48,
+        "y": 48,
+        "width": 540,
+        "height": 26
+      },
+      "minIoU": 0.4
+    },
+    {
+      "type": "UPI",
+      "bbox": {
+        "x": 48,
+        "y": 48,
+        "width": 540,
+        "height": 26
+      },
+      "minIoU": 0.4
+    }
+  ],
+  "negatives": [],
+  "masked": [],
+  "notes": "three independent PII values inside ONE text leaf → three regions, no conflict (text never conflicts with text)."
+}

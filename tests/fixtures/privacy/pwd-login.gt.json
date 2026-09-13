@@ -1,0 +1,26 @@
+{
+  "id": "pwd-login",
+  "viewport": {
+    "width": 640,
+    "height": 480
+  },
+  "image": "pwd-login.png",
+  "grounds": [
+    {
+      "type": "PASSWORD",
+      "bbox": {
+        "x": 48,
+        "y": 156,
+        "width": 360,
+        "height": 44
+      },
+      "minIoU": 0.4
+    }
+  ],
+  "negatives": [
+    "username field",
+    "normal greeting text"
+  ],
+  "masked": [],
+  "notes": "no label-for; cue comes from aria-label 'Your password' → structural boost 0.96"
+}

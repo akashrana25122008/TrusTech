@@ -11,15 +11,19 @@
     "icons": "node build/make-icons.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "metrics": "vitest run tests/metrics && node tools/generate-metrics-report.mjs",
+    "performance": "npm run build && node tools/measure-bundles.mjs && vitest run tests/performance"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
     "lucide-react": "^0.441.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.169.0"
   },
   "devDependencies": {
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^22.20.2",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

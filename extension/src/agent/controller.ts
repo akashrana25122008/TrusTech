@@ -154,7 +154,7 @@ export class AgentController {
   constructor(
     private readonly adapter: BrowserAdapter,
     private readonly bus: AgentEventBus,
-    private readonly planner: ActionPlanner = planNextAction,
+    private planner: ActionPlanner = planNextAction,
     private readonly memoryStore: VisualMemoryStore | null = null,
   ) {}
 
@@ -223,6 +223,14 @@ export class AgentController {
 
   get status(): ControllerStatus {
     return { runtime: this.state.status, ui: this.state.ui };
+  }
+
+  getPlanner(): ActionPlanner {
+    return this.planner;
+  }
+
+  setPlanner(planner: ActionPlanner): void {
+    this.planner = planner;
   }
 
   /* ---- the closed loop ---- */

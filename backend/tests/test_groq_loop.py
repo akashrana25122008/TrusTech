@@ -21,6 +21,8 @@ from fastapi.testclient import TestClient
 
 import backend.app.api.agent_step as step_module
 from backend.app.main import app
+from backend.app.services.ai.groq import GroqProvider
+from backend.app.services.ai.manager import AIProviderManager
 from backend.app.services.llm import GroqLlmProvider
 
 client = TestClient(app)
@@ -82,10 +84,11 @@ def settings(monkeypatch):
 
 
 def use_scripted_groq(monkeypatch):
-    def provider():
+    def manager():
         transport = httpx.MockTransport(groq_script)
-        return GroqLlmProvider(api_key="gsk_test", client=httpx.AsyncClient(transport=transport))
-    monkeypatch.setattr(step_module, "_provider", provider)
+        provider = GroqProvider(api_key="gsk_test", client=httpx.AsyncClient(transport=transport))
+        return AIProviderManager([provider])
+    monkeypatch.setattr(step_module, "_ai_manager", manager)
 
 
 def observe(url, visible_text, elements, page_type="content"):
@@ -154,14 +157,15 @@ def test_groq_path_drives_homepage_search(settings, monkeypatch):
 
 
 def test_groq_garbage_is_502_not_silent_success(settings, monkeypatch):
-    def provider():
+    def manager():
         async def broken(prompt: str) -> str:
             return "sorry, no can do"
         transport = httpx.MockTransport(lambda req: httpx.Response(200, json={
             "choices": [{"message": {"content": "sorry, no can do"}}], "usage": {},
         }))
-        return GroqLlmProvider(api_key="gsk_test", client=httpx.AsyncClient(transport=transport))
+        provider = GroqProvider(api_key="gsk_test", client=httpx.AsyncClient(transport=transport))
+        return AIProviderManager([provider])
 
-    monkeypatch.setattr(step_module, "_provider", provider)
+    monkeypatch.setattr(step_module, "_ai_manager", manager)
     r = step(GOAL, observe("https://www.youtube.com/", "home", HOME_ELEMENTS), [])
     assert r.status_code == 502

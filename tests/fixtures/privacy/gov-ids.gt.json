@@ -1,0 +1,46 @@
+{
+  "id": "gov-ids",
+  "viewport": {
+    "width": 640,
+    "height": 480
+  },
+  "image": "gov-ids.png",
+  "grounds": [
+    {
+      "type": "PASSPORT",
+      "bbox": {
+        "x": 48,
+        "y": 48,
+        "width": 360,
+        "height": 44
+      },
+      "minIoU": 0.4
+    },
+    {
+      "type": "VOTER_ID",
+      "bbox": {
+        "x": 48,
+        "y": 120,
+        "width": 360,
+        "height": 44
+      },
+      "minIoU": 0.4
+    },
+    {
+      "type": "DRIVING_LICENSE",
+      "bbox": {
+        "x": 48,
+        "y": 192,
+        "width": 360,
+        "height": 44
+      },
+      "minIoU": 0.4
+    }
+  ],
+  "negatives": [
+    "DOB string",
+    "cross-type collisions"
+  ],
+  "masked": [],
+  "notes": ""
+}

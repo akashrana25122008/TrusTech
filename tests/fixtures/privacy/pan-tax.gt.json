@@ -1,0 +1,26 @@
+{
+  "id": "pan-tax",
+  "viewport": {
+    "width": 640,
+    "height": 480
+  },
+  "image": "pan-tax.png",
+  "grounds": [
+    {
+      "type": "PAN",
+      "bbox": {
+        "x": 48,
+        "y": 92,
+        "width": 360,
+        "height": 44
+      },
+      "minIoU": 0.4
+    }
+  ],
+  "negatives": [
+    "due date",
+    "₹85,000 amount"
+  ],
+  "masked": [],
+  "notes": ""
+}

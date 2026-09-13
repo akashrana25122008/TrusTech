@@ -88,6 +88,9 @@ class StepRequest(BaseModel):
 class StepResponse(BaseModel):
     action: dict[str, Any]
     model: str
+    # Name of the provider that produced this answer ("gemini", "groq" or
+    # "openrouter") — request metadata, never an API key or secret.
+    provider: str = "unknown"
     usage: dict[str, Any] = Field(default_factory=dict)
     redacted: int = 0
     # Optional structured task plan emitted on the first decision (and any

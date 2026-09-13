@@ -1,17 +1,22 @@
-"""Agent step endpoint — FastAPI gateway to Groq reasoning.
+"""Agent step endpoint — FastAPI gateway to the multi-provider AI fallback engine.
 
 Contract:
-  Extension (sanitized) → POST /api/agent/step → Groq → normalized action.
+  Extension (sanitized) → POST /api/agent/step → AI chain (Gemini primary,
+  Groq secondary, OpenRouter final) → normalized action.
 
 The backend NEVER executes browser commands, NEVER accepts browser code, and
-NEVER sees credentials (the key stays in server env). Every proposed action
+NEVER sees credentials (API keys stay in server env). Every proposed action
 passes ``validate_tool_action`` here AND the full extension pipeline
 (schema → semantic → target → risk) before anything touches the browser.
+
+Provider failures never bubble raw detail to the client: the chain is logged
+server-side and the client gets a clean, secret-free HTTP response.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Any
 
@@ -19,26 +24,20 @@ from fastapi import APIRouter, HTTPException
 
 from backend.app.privacy.filter import redact, redact_secrets
 from backend.app.schemas.step import StepRequest, StepResponse, validate_tool_action
+from backend.app.services.ai import AIErrorCategory
+from backend.app.services.ai.errors import AIServiceError
+from backend.app.services.ai.manager import AIProviderManager
 from backend.app.services.config import get_settings
 from backend.app.services.tools import render_tool_prompt
-from backend.app.services.llm import (
-    GroqAuthError,
-    GroqConfigError,
-    GroqError,
-    GroqLlmProvider,
-    GroqRateLimitError,
-    GroqResponseError,
-    GroqServerError,
-    GroqTimeoutError,
-)
+
+logger = logging.getLogger("trustech.agent_step")
 
 router = APIRouter(tags=["agent"])
 
 
-def _provider() -> GroqLlmProvider:
-    """Provider seam — monkeypatched in tests, settings-driven in prod."""
-    settings = get_settings()
-    return GroqLlmProvider(api_key=settings.groq_api_key, model=settings.groq_model)
+def _ai_manager() -> AIProviderManager:
+    """Provider-chain seam — monkeypatched in tests, settings-driven in prod."""
+    return AIProviderManager.from_settings(get_settings())
 
 
 SYSTEM_PROMPT = """You are the reasoning engine for a browser agent. Output ONE JSON object only — no prose, no markdown.
@@ -257,9 +256,12 @@ def _extract_interpretation(parsed: dict) -> str | None:
 
 @router.post("/api/agent/step", response_model=StepResponse)
 async def agent_step(req: StepRequest) -> StepResponse:
-    settings = get_settings()
-    if not settings.groq_api_key:
-        raise HTTPException(status_code=503, detail="reasoning engine not configured: GROQ_API_KEY is missing")
+    manager = _ai_manager()
+    if not manager.has_configured_provider():
+        raise HTTPException(
+            status_code=503,
+            detail="AI service is not configured: set GEMINI_API_KEY, GROQ_API_KEY, or OPENROUTER_API_KEY",
+        )
 
     # Defense in depth: the extension firewall is the real boundary; redact
     # again server-side so raw PII never reaches the model. Element names
@@ -285,28 +287,14 @@ async def agent_step(req: StepRequest) -> StepResponse:
     redacted += vn + vn2
 
     try:
-        provider = _provider()
-    except GroqConfigError:
-        raise HTTPException(status_code=503, detail="reasoning engine not configured: GROQ_API_KEY is missing") from None
+        result = await manager.complete(
+            _build_prompt(req, visible_text, screened_elements, verification_text)
+        )
+    except AIServiceError as err:
+        _abort_from_ai_error(err)
 
     try:
-        raw = await provider.complete(_build_prompt(req, visible_text, screened_elements, verification_text))
-    except GroqAuthError:
-        raise HTTPException(status_code=502, detail="reasoning engine authentication failed") from None
-    except GroqRateLimitError as err:
-        print(f"[agent_step] Groq rate-limited: {err}", flush=True)
-        raise HTTPException(status_code=503, detail=f"reasoning engine rate-limited: {err}") from None
-    except GroqTimeoutError as err:
-        print(f"[agent_step] Groq timed out: {err}", flush=True)
-        raise HTTPException(status_code=503, detail=f"reasoning engine timed out: {err}") from None
-    except GroqResponseError as err:
-        raise HTTPException(status_code=502, detail=f"reasoning engine returned an unusable response: {err}") from None
-    except GroqError as err:
-        print(f"[agent_step] Groq failed: {type(err).__name__}: {err}", flush=True)
-        raise HTTPException(status_code=503, detail=f"reasoning engine error ({type(err).__name__}): {err}") from None
-
-    try:
-        parsed = _parse_output(raw)
+        parsed = _parse_output(result.content)
         action = validate_tool_action(_action_from(parsed))
         plan = _extract_plan(parsed)
         inputs = _extract_data(parsed, "inputs")
@@ -315,10 +303,11 @@ async def agent_step(req: StepRequest) -> StepResponse:
     except (ValueError, json.JSONDecodeError) as e:
         raise HTTPException(status_code=502, detail=f"reasoning engine returned an unusable action: {e}") from None
 
-    usage = getattr(provider, "last_usage", None) or {}
+    usage = result.usage or {}
     return StepResponse(
         action=action,
-        model=settings.groq_model,
+        model=result.model,
+        provider=result.provider,
         usage=usage,
         redacted=redacted,
         plan=plan,
@@ -326,3 +315,35 @@ async def agent_step(req: StepRequest) -> StepResponse:
         generatedData=generated_data,
         interpretation=interpretation,
     )
+
+
+def _abort_from_ai_error(err: AIServiceError) -> None:
+    """Map a normalized AI error to a clean user-facing HTTP response.
+
+    Provider names, latency and raw provider text are logged server-side only;
+    the client receives a category-level, secret-free message. Groq rate-limit
+    exhaustion is handled gracefully here (one clean 503), never surfaced as an
+    application bug.
+    """
+    logger.error(
+        "[AI] step failed provider=%s category=%s msg=%s",
+        err.provider or "-",
+        err.category.value,
+        err.message,
+    )
+    if err.category == AIErrorCategory.TIMEOUT:
+        raise HTTPException(status_code=504, detail="AI service timed out; please retry") from None
+    if err.category in (AIErrorCategory.RATE_LIMIT, AIErrorCategory.QUOTA_EXCEEDED):
+        raise HTTPException(status_code=503, detail="AI service is rate-limited; please retry shortly") from None
+    if err.category == AIErrorCategory.AUTHENTICATION_ERROR:
+        raise HTTPException(status_code=502, detail="AI service authentication failed (server-side key issue)") from None
+    if err.category == AIErrorCategory.INVALID_RESPONSE:
+        raise HTTPException(status_code=502, detail="AI service returned an unusable response") from None
+    if err.category == AIErrorCategory.BAD_REQUEST:
+        raise HTTPException(status_code=400, detail="AI service rejected the request as invalid") from None
+    if err.category == AIErrorCategory.CONFIG:
+        raise HTTPException(
+            status_code=503,
+            detail="AI service is not configured: set GEMINI_API_KEY, GROQ_API_KEY, or OPENROUTER_API_KEY",
+        ) from None
+    raise HTTPException(status_code=503, detail="AI service unavailable; please retry") from None

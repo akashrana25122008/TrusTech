@@ -1,0 +1,1 @@
+{"backgroundJsMaxBytes":20000,"contentJsMaxBytes":70000,"note":"Limits = post-optimization measured size + headroom (~20-40%). Bump only with a documented reason; any increase must keep three.js / onnxruntime out of panel.js.","panelJsMaxBytes":450000,"robotChunkMaxBytes":650000,"visionWorkerMaxBytes":15000}
