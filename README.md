@@ -1,152 +1,703 @@
-# TrusTech — AI Browser Agent
+# TrusTech
 
-A premium, cinematic AI browser **agent**. Runs as a persistent **vertical side
-panel** (Chrome MV3 Side Panel + Firefox Sidebar) with a real-time **3D robot
-companion** (Three.js) that observes, thinks, acts, waits and verifies on your
-behalf — backed by a local-first privacy/risk layer and a FastAPI gateway.
+### Privacy-First AI Browser Agent with On-Device Visual Privacy Protection
 
+> **AI should see what it needs — not everything the user can see.**
+
+TrusTech is a **privacy-first AI browser agent** that combines browser automation, computer vision, and privacy protection to enable intelligent web interaction without unnecessarily exposing sensitive information.
+
+Unlike conventional AI browser agents that may rely on raw screenshots or unrestricted browser context, TrusTech introduces a **privacy layer between the browser environment and the AI agent**.
+
+The system is designed to:
+
+**Observe → Detect → Protect → Reason → Act → Verify**
+
+---
+
+## 🚀 Overview
+
+AI-powered browser agents are becoming increasingly capable of navigating websites, understanding interfaces, and performing tasks on behalf of users.
+
+However, browser environments often contain sensitive information such as:
+
+* Passwords
+* Credit/debit card details
+* Aadhaar and PAN information
+* Phone numbers
+* Email addresses
+* UPI IDs
+* IFSC information
+* Government IDs
+* Faces
+* Other visually sensitive content
+
+A conventional visual AI workflow can expose far more information than is actually required to complete a task.
+
+### TrusTech addresses this privacy gap.
+
+Instead of directly forwarding raw browser visuals to an AI system, TrusTech introduces an intermediate privacy pipeline that analyzes, detects, and sanitizes sensitive visual information before it can be used for AI reasoning.
+
+```text
+                 Traditional Approach
+
+Browser
+   │
+   ▼
+Raw Screenshot
+   │
+   ▼
+AI Model
 ```
-BROWSER   = the world        EXTENSION  = the AI control room
-3D ROBOT  = the AI agent     HUD        = the agent's state
-IN-PAGE   = what the AI is doing right now
-PRIVACY   = the firewall between the page and any remote
+
+```text
+                    TrusTech
+
+Browser
+   │
+   ▼
+Visual Capture
+   │
+   ▼
+On-Device Vision
+   │
+   ▼
+Sensitive Information Detection
+   │
+   ▼
+Privacy Decision
+   │
+   ▼
+Redaction / Sanitization
+   │
+   ▼
+Sanitized Context
+   │
+   ▼
+AI Agent
+   │
+   ▼
+Safe Action
+   │
+   ▼
+Verification
 ```
 
 ---
 
-## Monorepo layout
+# 🎯 Key Objectives
 
-```
-TrusTech/
-├── extension/                React + TS + Chrome/Firefox Extension API
-│   ├── public/               manifest.json + generated icons (copied into dist/)
-│   ├── panel.html            side panel entry
-│   └── src/
-│       ├── ui/               components, hooks, three (robot), styles
-│       ├── agent/            planner (sim) + controller (observe→plan→risk→execute→verify)
-│       ├── browser/          BrowserAdapter + chrome.ts + firefox.ts
-│       ├── content/          in-page overlay + trusted action executor
-│       ├── background/       worker: tabs / panels / message router
-│       ├── vision/           provider interfaces + capability detection (Transformers.js / WebGPU / WASM / PaddleOCR)
-│       ├── privacy/          PII detection + dynamic redaction + privacy firewall
-│       ├── security/         Action Risk Engine (confirmation-gated execution)
-│       └── shared/           domain types, runtime seams, message protocol
-├── backend/                  Python + FastAPI gateway (schemas/agents/vision/privacy/security/services/middleware)
-├── models/                   local-first model registry (ONNX / Transformers.js / PaddleOCR)
-├── infrastructure/aws/       Fargate + ECS + S3 deploy sketch (terraform)
-├── docker/                   backend + development + production images, Caddyfile
-├── tests/                    vitest suites for privacy, risk, planner/controller, router
-└── build/                    icon generator
-```
+TrusTech is built around four core objectives:
 
-## Official stack targets (MASTER ENGINEERING DIRECTIVE)
+### 1. Privacy
 
-| Layer       | Choice |
-|-------------|--------|
-| Frontend    | React 18 · TS · Vite 5 · Chrome/Firefox Extension APIs |
-| Brain       | FastAPI (Python) backend gateway · LLM provider interface |
-| Vision      | Transformers.js (WebGPU/WASM) · ONNX Runtime Web · PaddleOCR-compatible OCR |
-| Privacy     | PII detection · dynamic redaction · privacy firewall · Action Risk Engine |
-| Deployment  | Docker (backend/dev/prod) · AWS Fargate · S3/CloudFront |
-| Local AI    | model registry in `models/`; never bundled with the MV3 worker |
+Minimize unnecessary exposure of sensitive browser information.
 
-The extension ships a **working simulation** of the plan loop (`agent/planner.ts`)
-so the panel, robot and overlay are fully functional now. Swapping it for the
-FastAPI gateway only changes where `SimEvent`s come from.
+### 2. Intelligence
+
+Provide AI agents with the context required to understand and interact with websites.
+
+### 3. Safety
+
+Introduce risk-aware action execution instead of blindly performing browser operations.
+
+### 4. Reliability
+
+Verify actions and resulting browser states rather than assuming successful execution.
 
 ---
 
-## Getting started
+# ✨ Key Features
 
-```bash
-npm install
-npm run dev        # develop the panel at http://localhost:5173/extension/panel.html
-npm test           # vitest: privacy, risk, planner/controller, router (18 cases)
-npm run build      # typecheck + icons + bundle into dist/
+## 🤖 AI Browser Agent
+
+TrusTech provides an agent architecture for interacting with websites through a structured execution loop:
+
+```text
+OBSERVE
+   ↓
+PLAN
+   ↓
+RISK
+   ↓
+EXECUTE
+   ↓
+VERIFY
 ```
 
-### Install as an extension
+The agent can reason about the browser environment and perform appropriate actions while keeping privacy and safety considerations inside the workflow.
 
-**Chrome** (MV3 Side Panel ≥ 114):
-1. `npm run build`
-2. `chrome://extensions` → enable **Developer mode** → **Load unpacked** → `dist/`
-3. Click the TrusTech toolbar icon — the side panel opens.
+---
 
-**Firefox** (≥ 115):
-1. `npm run build`
-2. `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → `dist/manifest.json`
-3. Open the **TrusTech Agent** sidebar from the toolbar.
+## 👁️ On-Device Visual Intelligence
+
+TrusTech uses browser-side computer vision to analyze visual browser content before external AI processing.
+
+The vision layer is designed to support capability-aware execution:
+
+```text
+WebGPU
+  ↓
+WebAssembly
+  ↓
+CPU
+```
+
+This allows visual processing to adapt to the available browser and hardware capabilities.
+
+---
+
+## 🔐 Visual Sensitive-Information Detection
+
+The vision layer is designed to identify visually sensitive elements such as:
+
+```text
+FACE
+PASSWORD
+CARD_NUMBER
+AADHAAR
+PAN
+UPI
+PHONE
+EMAIL
+IFSC
+PASSPORT
+VOTER_ID
+DRIVING_LICENSE
+```
+
+Visual signals can be combined with text-based privacy information to build a more complete understanding of the browser environment.
+
+---
+
+## 🛡️ Privacy-Aware Redaction
+
+Detected sensitive regions can be protected using configurable redaction techniques such as:
+
+```text
+BLACKOUT
+BLUR
+MASK
+```
+
+The objective is to preserve useful interface context while reducing unnecessary exposure of private information.
+
+Example:
+
+```text
+Original Browser View
+
+┌─────────────────────────────────┐
+│ Username: arjun@example.com     │
+│ Password: **************         │
+│ Card: 4532  ****  ****  9842    │
+│                                 │
+│          [ Continue ]            │
+└─────────────────────────────────┘
+```
+
+After privacy processing:
+
+```text
+Sanitized Browser View
+
+┌─────────────────────────────────┐
+│ Username: ███████████████       │
+│ Password: ███████████████       │
+│ Card: ███████████████████       │
+│                                 │
+│          [ Continue ]            │
+└─────────────────────────────────┘
+```
+
+The AI can still understand the interface and task-relevant structure without automatically receiving the original sensitive content.
+
+---
+
+# 🔒 Privacy-First Architecture
+
+Privacy is treated as a core architectural layer rather than an optional post-processing step.
+
+```text
+                 BROWSER
+                    │
+                    ▼
+              Screen Capture
+                    │
+                    ▼
+          On-Device Vision Layer
+                    │
+                    ▼
+       Sensitive Element Detection
+                    │
+                    ▼
+          Privacy Decision Engine
+                    │
+                    ▼
+             Redaction Layer
+                    │
+                    ▼
+          Sanitized Visual Context
+                    │
+                    ▼
+                AI Agent
+                    │
+                    ▼
+             Browser Action
+                    │
+                    ▼
+              Verification
+```
+
+### Core Privacy Principle
+
+```text
+RAW IMAGE → NEVER SEND
+```
+
+The system is designed so that raw visual information is not treated as ordinary AI input. Visual data should first pass through the privacy pipeline and only sanitized context should become eligible for downstream processing.
+
+---
+
+# 🧠 Text + Vision Privacy
+
+TrusTech is designed to combine multiple forms of browser understanding.
+
+```text
+       Text / DOM Information
+                 │
+                 │
+                 ▼
+          Privacy Analysis
+                 ▲
+                 │
+                 │
+         Visual Information
+                 │
+                 ▼
+          Vision Analysis
+                 │
+                 └──────────────┐
+                                ▼
+                    Unified Privacy Context
+```
+
+This multimodal approach helps the system reason about both:
+
+**What the page says**
+
+and
+
+**What the page visually contains**
+
+---
+
+# 🎯 Visual Action Grounding
+
+Understanding a browser is only one part of browser automation.
+
+TrusTech also connects visual understanding with action execution.
+
+```text
+Visual Detection
+      ↓
+Bounding Box
+      ↓
+Screen Coordinates
+      ↓
+Target Validation
+      ↓
+Action Execution
+      ↓
+Result Verification
+```
+
+This allows visual information to contribute directly to browser interaction when DOM or text information alone is insufficient.
+
+---
+
+# ⚙️ Safety-Aware Execution
+
+TrusTech follows a structured interaction model rather than treating every AI-generated action as automatically executable.
+
+```text
+Observe
+   ↓
+Understand
+   ↓
+Plan
+   ↓
+Evaluate Risk
+   ↓
+Execute
+   ↓
+Verify
+```
+
+This provides an additional layer of control for actions involving sensitive pages, important UI elements, or potentially irreversible operations.
+
+---
+
+# 🌐 Privacy-Aware Data Flow
+
+The intended data flow is:
+
+```text
+RAW VISUAL DATA
+       │
+       ▼
+LOCAL ANALYSIS
+       │
+       ▼
+SENSITIVE CONTENT DETECTION
+       │
+       ▼
+PRIVACY POLICY
+       │
+       ▼
+REDACTION / SANITIZATION
+       │
+       ▼
+SANITIZED CONTEXT
+       │
+       ▼
+AI REASONING
+```
+
+A key safety condition is:
+
+```text
+No Sanitized Verdict
+        ↓
+No Visual Network Transmission
+```
+
+---
+
+# 🏗️ Technology Stack
+
+### Browser Extension
+
+* TypeScript
+* JavaScript
+* HTML
+* CSS
+* Vite
+* Browser Extension APIs
+
+### AI & Computer Vision
+
+* On-device Computer Vision
+* ONNX Runtime Web
+* Transformers.js
+* WebGPU
+* WebAssembly
+* CPU fallback
 
 ### Backend
 
-```bash
-python3 -m venv backend/.venv && source backend/.venv/bin/activate
-pip install -r backend/requirements.txt
-uvicorn backend.app.main:app --reload
-```
-Run from the repo root (`uvicorn` and `pytest` both need the root on the
-import path; backend tests also work via `cd backend && pytest` thanks to
-`backend/pytest.ini` + `backend/conftest.py`).
+* Node.js / backend services
+* REST APIs
+* AI agent controller
+* Vision processing pipeline
+
+### Infrastructure & Development
+
+* Docker
+* Automated testing
+* Build tooling
+* Performance benchmarking
 
 ---
 
-## How the agent loop works
+# 📁 Repository Structure
 
-Each task goes through a real (gated) pipeline even in simulation:
-
+```text
+TrusTech/
+│
+├── extension/                 # Browser extension
+├── backend/                   # Backend services & APIs
+├── models/                    # AI / vision models
+├── tests/                     # Test suites
+├── docs/                      # Documentation
+├── infrastructure/            # Infrastructure configuration
+├── docker/                    # Container configuration
+├── tools/                     # Development & utility tools
+├── build/                     # Build-related files
+├── TRUSTECH-FORENSIC-AUDIT/   # Security / forensic audit material
+│
+├── package.json
+├── package-lock.json
+├── tsconfig.json
+├── vite.config.ts
+├── vite.content.config.ts
+├── .gitignore
+└── README.md
 ```
-observe  → plan  → validate  → risk     → execute  → verify
-  │               │           │
- scan page     infer      check      Action Risk Engine:
- context       steps      intent     high-risk = WAITING gate (user approve)
-                                        │
-privacy firewall (PII/redact)           └─ approval → deferred steps run
-```
-
-- **Risk engine** (`security/riskEngine.ts`) escalates financial, destructive
-  and credential actions to **high** — those never self-execute; the agent
-  pauses and shows reasons in the confirm bar.
-- **Privacy firewall** (`privacy/`) detects PII (email, phone, card, Aadhaar,
-  PAN, SSN, IP, postal), redacts before anything leaves the page, and returns
-  `ALERT` + block when financial-grade data is found.
-- **BrowserAdapter** (`browser/`) is the only seam to the platform; Chrome and
-  Firefox implementations live side by side, so the worker never touches
-  `chrome`/`browser` globals directly.
-
-### Messaging protocol
-
-```
-panel ──runtime.sendMessage──▶ background ──tabs.sendMessage──▶ active tab content script
-        AGENT_HIGHLIGHT                            ─▶ glowing marker + label + beam
-        AGENT_BEAM                                ─▶ beam toggle
-        AGENT_INJECT_ACTION                       ─▶ real click / type / scroll / select
-        AGENT_STATE                               ─▶ in-page status pill
-        BROWSER_COMMAND  (newTab / closeTab / reload handled in background)
-```
-
-### The 3D robot
-
-- Procedurally built (~40 primitives, no GLB, no textures) with PMREM studio
-  reflections and selective UnrealBloom.
-- An 8-state damped motion machine (IDLE → OBSERVING → THINKING → ACTING →
-  SUCCESS / WAITING / PAUSED / ERROR) drives the body language.
-- Adaptive pixel ratio, particle count and bloom disabled on low-power
-  devices / `prefers-reduced-motion` / coarse pointers.
 
 ---
 
-## Testing
+# 🧪 Testing & Evaluation
 
-```bash
-npm test                                  # extension unit suites (vitest)
-pytest backend/tests                      # backend gate + firewall + health (from repo root)
-# or: cd backend && pytest
+TrusTech is designed to be evaluated across multiple dimensions rather than only measuring whether an agent can complete a browser task.
+
+Key evaluation areas include:
+
+| Evaluation Area         | Purpose                                      |
+| ----------------------- | -------------------------------------------- |
+| Visual Context Accuracy | Measures the quality of visual understanding |
+| PII Precision / Recall  | Measures sensitive-information detection     |
+| Redaction Precision     | Measures protection of sensitive regions     |
+| Client Resources        | Measures browser-side resource consumption   |
+| End-to-End Latency      | Measures overall system responsiveness       |
+
+The evaluation framework is intended to balance:
+
+**Privacy + Accuracy + Performance + Safety + Reliability**
+
+---
+
+# ⚡ Performance Considerations
+
+Browser-based AI systems must operate within practical client-side resource constraints.
+
+TrusTech therefore considers:
+
+* Vision inference latency
+* Memory consumption
+* Extension startup time
+* Panel startup time
+* Bundle size
+* Redaction latency
+* Network latency
+* Agent latency
+* End-to-end task latency
+
+The architecture is designed to make privacy processing as lightweight as practical while maintaining useful visual context.
+
+---
+
+# 🔐 Security Principles
+
+### Privacy by Design
+
+Privacy protection is integrated into the data flow before downstream AI processing.
+
+### Data Minimization
+
+The system aims to expose only the information required for completing a task.
+
+### Local-First Processing
+
+Sensitive visual analysis is designed to happen locally whenever possible.
+
+### Fail-Closed Privacy
+
+When privacy validation cannot establish a safe sanitized representation, the visual transmission path should not proceed.
+
+### Action Verification
+
+Browser actions should be followed by state verification.
+
+### Separation of Responsibilities
+
+The architecture separates:
+
+```text
+Detection
+   ↓
+Privacy
+   ↓
+Reasoning
+   ↓
+Execution
+   ↓
+Verification
 ```
 
-Covered today: PII detection/redaction, firewall verdicts, risk-engine
-escalation & approval, planner lifecycle, guarded timeline (confirmation gates),
-privacy redaction counts, and message routing.
+This makes the system easier to test, reason about, and harden.
 
-## License
+---
 
-MIT
+# 💡 Example Use Case
+
+Consider an AI agent asked to:
+
+> **"Open the banking website and navigate to the payment section."**
+
+The browser may contain:
+
+```text
+Account Information
+Password
+Card Information
+UPI ID
+Navigation Controls
+Payment Buttons
+```
+
+A conventional visual agent could receive the complete screen.
+
+TrusTech instead aims to provide:
+
+```text
+Navigation Controls
+Relevant Page Structure
+Required Visual Context
+        +
+Protected Sensitive Regions
+```
+
+The agent can therefore reason about the interface while unnecessary private information is protected.
+
+---
+
+# 🌍 Potential Applications
+
+TrusTech's privacy-aware browser-agent architecture can be applied to areas such as:
+
+* Banking and financial workflows
+* E-commerce
+* Enterprise web applications
+* Healthcare portals
+* Government services
+* Productivity automation
+* Customer-support workflows
+* Personal AI assistants
+* Privacy-sensitive enterprise automation
+
+---
+
+# 🔬 Core Innovation
+
+The central idea behind TrusTech is to treat **privacy as part of the browser-agent perception pipeline**.
+
+Instead of:
+
+```text
+Browser → AI
+```
+
+TrusTech introduces:
+
+```text
+Browser
+   ↓
+Privacy-Aware Perception
+   ↓
+Sanitized Context
+   ↓
+AI Agent
+   ↓
+Safe Action
+   ↓
+Verification
+```
+
+This creates a boundary between **what the browser can observe** and **what the AI actually needs to know**.
+
+---
+
+# 🛡️ Design Philosophy
+
+TrusTech is built around a simple principle:
+
+> **Give AI enough context to act intelligently, without giving it unnecessary access to private information.**
+
+The goal is not to reduce the capabilities of AI agents.
+
+The goal is to make those capabilities **more privacy-aware, safer, and more controllable**.
+
+---
+
+# 🚧 Project Status
+
+TrusTech is an evolving research and engineering project focused on combining:
+
+```text
+AI Agents
+      +
+Computer Vision
+      +
+Browser Automation
+      +
+Privacy Engineering
+      +
+Security
+```
+
+The repository contains the implementation, supporting infrastructure, testing components, documentation, and audit material for the project.
+
+---
+
+# 🔮 Future Scope
+
+Future development can extend TrusTech toward:
+
+* More advanced visual PII detection
+* Improved OCR + vision fusion
+* Better privacy-policy customization
+* Adaptive redaction
+* Quantized browser-side models
+* Faster WebGPU inference
+* Improved browser compatibility
+* Stronger action verification
+* Advanced multimodal agent reasoning
+* More comprehensive privacy and security benchmarks
+
+---
+
+# 👥 Project
+
+## TrusTech
+
+**Privacy-First AI Browser Agent with On-Device Visual Privacy Protection**
+
+### Core Concept
+
+```text
+OBSERVE
+   ↓
+DETECT
+   ↓
+PROTECT
+   ↓
+REASON
+   ↓
+ACT
+   ↓
+VERIFY
+```
+
+---
+
+## ⭐ Why TrusTech?
+
+AI agents are becoming capable of seeing and interacting with the web.
+
+TrusTech focuses on an important question:
+
+> **What should an AI agent be allowed to see while it is operating a user's browser?**
+
+By placing a privacy-aware visual layer between the browser and the AI agent, TrusTech aims to make browser automation more privacy-conscious without removing the intelligence required to complete real-world tasks.
+
+---
+
+## 📜 License
+
+Add the project's applicable license here.
+
+Example:
+
+```text
+MIT License
+```
+
+---
+
+<p align="center">
+
+**TrusTech**
+
+*Observe. Detect. Protect. Reason. Act. Verify.*
+
+</p>
